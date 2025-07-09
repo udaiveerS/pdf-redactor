@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # Backend service (shared by all clients)
+  project-colab-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+    restart: unless-stopped
+    networks:
+      - project-colab-network
+
+  # Client 1
+  project-colab-client-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - CLIENT_ID=client-1
+    restart: unless-stopped
+    networks:
+      - project-colab-network
+
+  # Client 2
+  project-colab-client-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - CLIENT_ID=client-2
+    restart: unless-stopped
+    networks:
+      - project-colab-network
+
+  # Client 3
+  project-colab-client-3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - CLIENT_ID=client-3
+    restart: unless-stopped
+    networks:
+      - project-colab-network
+
+  # Client 4
+  project-colab-client-4:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8084:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - CLIENT_ID=client-4
+    restart: unless-stopped
+    networks:
+      - project-colab-network
+
+  # Client 5
+  project-colab-client-5:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8085:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - CLIENT_ID=client-5
+    restart: unless-stopped
+    networks:
+      - project-colab-network
+
+networks:
+  project-colab-network:
+    driver: bridge 
