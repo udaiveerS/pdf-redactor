@@ -11,7 +11,8 @@ import AppNavbar from './components/AppNavbar';
 import Header from './components/Header';
 import MainGrid from './components/MainGrid';
 import SideMenu from './components/SideMenu';
-import ClientIdentifier from './components/ClientIdentifier';
+import TaskList from './components/TaskList';
+
 import AppTheme from './shared-theme/AppTheme';
 import {
   chartsCustomizations,
@@ -56,11 +57,9 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
           >
             <Header />
             <MainGrid />
+            <TaskList />
           </Stack>
-          <ClientIdentifier 
-            clientId={process.env.REACT_APP_CLIENT_ID || 'client-1'}
-            port={process.env.REACT_APP_PORT || '8080'}
-          />
+
         </Box>
       </Box>
     </AppTheme>

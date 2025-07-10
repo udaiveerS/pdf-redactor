@@ -1,3 +1,21 @@
 {
-  "type": "module"
+  "type": "module",
+  "name": "project-colab-server",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "node --loader ts-node/esm index.ts",
+    "dev": "ts-node --esm index.ts",
+    "build": "tsc",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.0"
+  }
 }

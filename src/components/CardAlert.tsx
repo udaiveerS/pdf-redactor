@@ -11,7 +11,7 @@ export default function CardAlert() {
       <CardContent>
         <AutoAwesomeRoundedIcon fontSize="small" />
         <Typography gutterBottom sx={{ fontWeight: 600 }}>
-          Welcome to Project Colab
+          Welcome to Project Colab (TypeScript)
         </Typography>
         <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
           Your collaborative workspace is ready.

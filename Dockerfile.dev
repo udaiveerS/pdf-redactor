@@ -17,5 +17,8 @@ COPY . .
 # Expose ports for React dev server and backend
 EXPOSE 3000 8080
 
+# Set Node.js memory limit for TypeScript compilation
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
 # Start development server
 CMD ["npm", "run", "dev"] 

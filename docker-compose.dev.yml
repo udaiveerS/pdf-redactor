@@ -9,9 +9,23 @@ services:
       - "3000:3000"
       - "8080:8080"
     environment:
+      - SKIP_PREFLIGHT_CHECK=true
+      - DISABLE_ESLINT_PLUGIN=true
+      - TSC_COMPILE_ON_ERROR=true
+      - FAST_REFRESH=false
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
+      - NODE_OPTIONS=--max-old-space-size=4096
+      - DANGEROUSLY_DISABLE_HOST_CHECK=true
+      - WDS_SOCKET_HOST=localhost
+      - WDS_SOCKET_PORT=0
+      - GENERATE_SOURCEMAP=false
     volumes:
       - .:/app
-      - /app/node_modules
-    restart: unless-stopped 
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G 

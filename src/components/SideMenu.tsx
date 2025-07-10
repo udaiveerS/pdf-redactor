@@ -11,6 +11,7 @@ import MenuContent from './MenuContent';
 import CardAlert from './CardAlert';
 import OptionsMenu from './OptionsMenu';
 
+
 const drawerWidth = 240;
 
 const Drawer = styled(MuiDrawer)({
@@ -68,16 +69,16 @@ export default function SideMenu() {
       >
         <Avatar
           sizes="small"
-          alt="Riley Carter"
-          src="/static/images/avatar/7.jpg"
           sx={{ width: 36, height: 36 }}
-        />
+        >
+          C
+        </Avatar>
         <Box sx={{ mr: 'auto' }}>
           <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: '16px' }}>
-            Riley Carter
+            {process.env.REACT_APP_CLIENT_ID || 'client-1'}
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            riley@email.com
+            Port: {process.env.REACT_APP_PORT || '8080'}
           </Typography>
         </Box>
         <OptionsMenu />
