@@ -11,7 +11,6 @@ import AppNavbar from './components/AppNavbar';
 import Header from './components/Header';
 import MainGrid from './components/MainGrid';
 import SideMenu from './components/SideMenu';
-import TaskList from './components/TaskList';
 
 import AppTheme from './shared-theme/AppTheme';
 import {
@@ -57,7 +56,6 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
           >
             <Header />
             <MainGrid />
-            <TaskList />
           </Stack>
 
         </Box>
