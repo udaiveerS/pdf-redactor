@@ -1,7 +1,6 @@
 import React from 'react';
 import { Paper, Typography, Box, Button, CircularProgress } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
-import { ProjectNode } from '../../../shared/types';
 import { ProjectsSectionProps } from './types';
 import ProjectCard from './ProjectCard';
 
@@ -9,12 +8,13 @@ const ProjectsSection: React.FC<ProjectsSectionProps> = ({
     projects, 
     selectedProject, 
     loading, 
+    loadingProjects,
     onProjectSelect, 
     onProjectEdit, 
     onProjectDelete, 
     onProjectCreate 
 }) => (
-    <Paper sx={{ p: 4, minHeight: '80vh', overflow: 'auto', width: '100%' }}>
+    <Paper sx={{ p: 4, height: '70vh', display: 'flex', flexDirection: 'column' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
             <Typography variant="h5" fontWeight="medium">
                 Projects
@@ -31,17 +31,18 @@ const ProjectsSection: React.FC<ProjectsSectionProps> = ({
         </Box>
 
         {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3, flex: 1 }}>
                 <CircularProgress />
             </Box>
         ) : (
-            <Box sx={{ width: '100%' }}>
+            <Box sx={{ flex: 1, overflow: 'auto' }}>
                 {projects && projects.length > 0 ? (
                     projects.map((project) => (
                         <ProjectCard
                             key={project.id}
                             project={project}
                             isSelected={selectedProject?.id === project.id}
+                            isLoading={loadingProjects.has(project.id)}
                             onSelect={onProjectSelect}
                             onEdit={onProjectEdit}
                             onDelete={onProjectDelete}

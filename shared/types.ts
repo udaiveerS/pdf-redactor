@@ -5,66 +5,57 @@ export type ISOTime = string;
 
 export type EntityType = 'task' | 'project';
 export type EventAction = 'create' | 'update' | 'delete';
+export type UnknownMessageType = 'unknown';
 
 export interface EventNode {
-    id: ID;
-    entityType: EntityType;
-    entityId: ID;
+    id: string;
+    lamportTs: number;
+    timestamp: string;
     action: EventAction;
-    payload?: any;
-    actorId: ID;
-    ts: number; // Lamport clock
+    nodeType: EntityType;
+    nodeId: string;
+    data: ProjectNode | TaskNode;
+}
+
+export type MessageType = 'handshake' | 'event';
+
+export interface HandshakeMessage {
+    type: 'handshake';
+    clientId: string;
+    lastKnownLamportTs: number;
+}
+
+export interface HandshakeResponseMessage {
+    type: 'handshake_response';
+    serverLamportTs: number;
+    missingEvents: EventNode[];
+}
+
+export interface WebSocketMessage {
+    type: MessageType;
 }
 
 export interface TaskNode {
-    id: ID;
-    projectId: ID;
+    id: string;
+    projectId: string;
     title: string;
-    status: 'pending' | 'in-progress' | 'completed';
+    status: 'pending' | 'in_progress' | 'completed';
     configuration: {
         priority: number;
-        description: string;
-        dueDate?: ISOTime;
+        description?: string;
+        dueDate?: string;
     };
-    createdAt: ISOTime;
-    updatedAt: ISOTime;
+    createdAt: string;
+    updatedAt: string;
+    lamportTs?: number;
 }
 
 export interface ProjectNode {
-    id: ID;
+    id: string;
     name: string;
     description: string;
     tasks: TaskNode[];
-    createdAt: ISOTime;
-    updatedAt: ISOTime;
-}
-
-// API Request/Response types
-export interface CreateProjectRequest {
-    name: string;
-    description: string;
-}
-
-export interface UpdateProjectRequest {
-    id: ID;
-    name?: string;
-    description?: string;
-}
-
-export interface CreateTaskRequest {
-    projectId: ID;
-    title: string;
-    description: string;
-    priority?: number;
-    dueDate?: ISOTime;
-}
-
-export interface UpdateTaskRequest {
-    id: ID;
-    projectId: ID;
-    title?: string;
-    description?: string;
-    status?: 'pending' | 'in-progress' | 'completed';
-    priority?: number;
-    dueDate?: ISOTime;
+    createdAt: string;
+    updatedAt: string;
+    lamportTs?: number;
 } 

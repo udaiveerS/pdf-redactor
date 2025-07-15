@@ -5,9 +5,11 @@ import {
     DialogContent,
     DialogActions,
     TextField,
-    Button
+    Button,
+    Stack,
+    Box,
+    CircularProgress
 } from '@mui/material';
-import { ProjectNode } from '../../../shared/types';
 import { ProjectDialogProps } from './types';
 
 const ProjectDialog: React.FC<ProjectDialogProps> = ({ open, project, onClose, onSubmit, loading }) => {
@@ -16,22 +18,33 @@ const ProjectDialog: React.FC<ProjectDialogProps> = ({ open, project, onClose, o
         description: ''
     });
 
+    // Track Lamport timestamp for this dialog instance
+    const [lamportTs, setLamportTs] = useState(0);
+
     useEffect(() => {
         if (project) {
             setFormData({
                 name: project.name,
                 description: project.description
             });
+            // Use project's timestamp if available, otherwise use current time
+            setLamportTs(project.lamportTs || Date.now());
         } else {
             setFormData({
                 name: '',
                 description: ''
             });
+            // For new projects, use current timestamp
+            setLamportTs(Date.now());
         }
-    }, [project]);
+    }, [project, open]); // Add 'open' to reset when dialog opens/closes
 
     const handleSubmit = () => {
-        onSubmit(formData);
+        // Include Lamport timestamp in the form data
+        onSubmit({
+            ...formData,
+            lamportTs: lamportTs
+        });
     };
 
     return (
@@ -40,30 +53,48 @@ const ProjectDialog: React.FC<ProjectDialogProps> = ({ open, project, onClose, o
                 {project ? 'Edit Project' : 'Create New Project'}
             </DialogTitle>
             <DialogContent>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <TextField
                     autoFocus
-                    margin="dense"
                     label="Project Name"
                     fullWidth
                     variant="outlined"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    sx={{ mb: 2 }}
+                    sx={{ mt: 1 }}
                 />
                 <TextField
-                    margin="dense"
                     label="Description"
                     fullWidth
-                    multiline
-                    rows={3}
                     variant="outlined"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
-            </DialogContent>
+            </Box>
+        </DialogContent>
             <DialogActions>
-                <Button onClick={onClose}>Cancel</Button>
-                <Button onClick={handleSubmit} variant="contained" disabled={loading || !formData.name.trim()}>
+                <Button onClick={() => {
+                    // Reset form data to original values
+                    if (project) {
+                        setFormData({
+                            name: project.name,
+                            description: project.description
+                        });
+                    } else {
+                        setFormData({
+                            name: '',
+                            description: ''
+                        });
+                    }
+                    // Add a small delay to prevent interference with click-outside detection
+                    setTimeout(() => onClose(), 50);
+                }}>Cancel</Button>
+                <Button 
+                    onClick={handleSubmit} 
+                    variant="contained" 
+                    disabled={loading || !formData.name.trim()}
+                    startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
+                >
                     {project ? 'Update' : 'Create'}
                 </Button>
             </DialogActions>

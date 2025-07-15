@@ -3,6 +3,7 @@ import { ProjectNode, TaskNode } from '../../../shared/types';
 export interface ProjectCardProps {
     project: ProjectNode;
     isSelected: boolean;
+    isLoading: boolean;
     onSelect: (project: ProjectNode) => void;
     onEdit: (project: ProjectNode) => void;
     onDelete: (projectId: string) => void;
@@ -10,6 +11,7 @@ export interface ProjectCardProps {
 
 export interface TaskCardProps {
     task: TaskNode;
+    isLoading: boolean;
     onEdit: (task: TaskNode) => void;
     onDelete: (taskId: string) => void;
 }
@@ -35,6 +37,7 @@ export interface ProjectsSectionProps {
     projects: ProjectNode[];
     selectedProject: ProjectNode | null;
     loading: boolean;
+    loadingProjects: Set<string>;
     onProjectSelect: (project: ProjectNode) => void;
     onProjectEdit: (project: ProjectNode) => void;
     onProjectDelete: (projectId: string) => void;
@@ -44,6 +47,7 @@ export interface ProjectsSectionProps {
 export interface TasksSectionProps {
     selectedProject: ProjectNode | null;
     loading: boolean;
+    loadingTasks: Set<string>;
     onTaskEdit: (task: TaskNode) => void;
     onTaskDelete: (taskId: string) => void;
     onTaskCreate: () => void;
