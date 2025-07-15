@@ -20,6 +20,8 @@ services:
       - WDS_SOCKET_HOST=localhost
       - WDS_SOCKET_PORT=0
       - GENERATE_SOURCEMAP=false
+      - CLIENT_ID=client-1
+      - REACT_APP_CLIENT_ID=client-1
     volumes:
       - .:/app
     restart: unless-stopped
