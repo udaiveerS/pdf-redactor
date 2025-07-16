@@ -20,16 +20,10 @@ export default function NavbarBreadcrumbs() {
   const location = useLocation();
   
   const getBreadcrumbItems = () => {
-    if (location.pathname === '/tasks') {
-      return [
-        { text: 'Dashboard', isActive: false },
-        { text: 'Projects', isActive: true }
-      ];
-    }
-    // Default for home page
+    // All routes now go to tasks/projects
     return [
       { text: 'Dashboard', isActive: false },
-      { text: 'Home', isActive: true }
+      { text: 'Projects', isActive: true }
     ];
   };
 
