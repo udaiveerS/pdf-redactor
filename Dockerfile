@@ -1,5 +1,5 @@
-# Multi-stage build for React frontend and Node.js backend
-FROM node:20-alpine AS builder
+# Production Dockerfile - Based on working dev approach
+FROM node:20-alpine
 
 # Set working directory
 WORKDIR /app
@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY server/package*.json ./server/
 
-# Install dependencies
+# Install all dependencies (including dev dependencies)
 RUN npm ci
 
 # Copy source code
@@ -17,27 +17,12 @@ COPY . .
 # Build the React app
 RUN npm run build
 
-# Production stage
-FROM node:20-alpine AS production
-
-# Set working directory
-WORKDIR /app
-
-# Copy package files for production
-COPY package*.json ./
-COPY server/package*.json ./server/
-
-# Install only production dependencies
-RUN npm ci --only=production
-
-# Copy built React app from builder stage
-COPY --from=builder /app/build ./build
-
-# Copy server code
-COPY server ./server
-
 # Expose port
 EXPOSE 8080
 
-# Start the server
+# Set Node.js memory limit for TypeScript compilation
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NODE_ENV=production
+
+# Start the server using the same approach as dev but for production
 CMD ["npm", "start"] 
