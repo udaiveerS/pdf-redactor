@@ -32,8 +32,8 @@
     "node": "20.x"
   },
   "scripts": {
-    "start": "node --loader ts-node/esm server/index.ts",
-    "dev": "concurrently \"react-scripts start\" \"NODE_ENV=development node --loader ts-node/esm server/index.ts\"",
+    "start": "NODE_OPTIONS=\"--loader ts-node/esm\" node server/index.ts",
+    "dev": "concurrently \"react-scripts start\" \"NODE_ENV=development ts-node --esm server/index.ts\"",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
