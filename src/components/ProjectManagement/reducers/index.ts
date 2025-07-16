@@ -1,2 +1,3 @@
-export { projectsReducer } from './projectReducer';
-export type { ProjectAction } from './projectReducer'; 
+export { mapReducer } from './mapReducer';
+export type { MapAction } from './mapReducer';
+export * from './types'; 

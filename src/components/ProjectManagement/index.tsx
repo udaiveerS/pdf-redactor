@@ -7,12 +7,11 @@ import ProjectDialog from './ProjectDialog';
 import TaskDialog from './TaskDialog';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { ProjectNode, TaskNode, EventNode } from '../../../shared/types';
-import { projectsReducer } from './reducers';
+import { mapReducer, createInitialState, getProjectsWithTasks } from './reducers';
 
 const ProjectManagement: React.FC = () => {
-    const [projects, dispatch] = useReducer(projectsReducer, []);
+    const [state, dispatch] = useReducer(mapReducer, createInitialState());
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [projectDialogOpen, setProjectDialogOpen] = useState(false);
     const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -22,6 +21,9 @@ const ProjectManagement: React.FC = () => {
     // Granular loading states
     const [loadingProjects, setLoadingProjects] = useState<Set<string>>(new Set());
     const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
+    
+    // Get projects with tasks populated for backward compatibility
+    const projects = getProjectsWithTasks(state);
     
     // Derive selectedProject from projects array
     const selectedProject = selectedProjectId ? projects.find(p => p.id === selectedProjectId) || null : null;
@@ -59,6 +61,7 @@ const ProjectManagement: React.FC = () => {
         if (eventQueue.length > 0) {
             console.log(`ProjectManagement processing ${eventQueue.length} WebSocket events`);
             console.log('Current projects state before processing:', projects);
+            console.log('🔍 DEBUG: Current tasks in state before processing:', Array.from(state.tasks.entries()));
             
             eventQueue.forEach((event: EventNode, index: number) => {
                 console.log(`Processing event ${index + 1}/${eventQueue.length}:`, event);
@@ -73,6 +76,7 @@ const ProjectManagement: React.FC = () => {
                                     payload: { project: event.data as ProjectNode, lamportTs: event.lamportTs }
                                 });
                             } else if (event.nodeType === 'task') {
+                                console.log('🔍 DEBUG: Creating task with data:', event.data);
                                 dispatch({
                                     type: 'CREATE_TASK',
                                     payload: { task: event.data as TaskNode, lamportTs: event.lamportTs }
@@ -109,10 +113,13 @@ const ProjectManagement: React.FC = () => {
                                     payload: { projectId: event.nodeId, lamportTs: event.lamportTs }
                                 });
                             } else if (event.nodeType === 'task') {
+                                console.log('🔍 DEBUG: Deleting task with ID:', event.nodeId);
+                                console.log('🔍 DEBUG: Current tasks before remote deletion:', Array.from(state.tasks.entries()));
                                 dispatch({
                                     type: 'DELETE_TASK',
                                     payload: { taskId: event.nodeId, lamportTs: event.lamportTs }
                                 });
+                                console.log('🔍 DEBUG: Current tasks after remote deletion:', Array.from(state.tasks.entries()));
                             } else {
                                 console.warn('⚠️ Unknown node type for delete event:', event.nodeType);
                                 setError(`Unknown node type for delete event: ${event.nodeType}`);
@@ -131,6 +138,7 @@ const ProjectManagement: React.FC = () => {
             });
             
             console.log('Final projects state:', projects);
+            console.log('🔍 DEBUG: Final tasks in state after processing:', Array.from(state.tasks.entries()));
         }
         
         // Cleanup function runs after each render and before the next effect
@@ -197,7 +205,7 @@ const ProjectManagement: React.FC = () => {
                     id: uuidv4(),
                     name: formData.name || '',
                     description: formData.description || '',
-                    tasks: [],
+                    taskIds: [],
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                     lamportTs: formData.lamportTs || lamportCounter
@@ -328,7 +336,14 @@ const ProjectManagement: React.FC = () => {
             // Clear any previous errors
             setError(null);
             
-            const taskToDelete = selectedProject?.tasks.find(t => t.id === taskId);
+            const taskToDelete = state.tasks.get(taskId);
+            
+            // Debug logging to help identify the issue
+            console.log('🔍 DEBUG: Before task deletion');
+            console.log('🔍 Task to delete:', taskToDelete);
+            console.log('🔍 All tasks in state:', Array.from(state.tasks.entries()));
+            console.log('🔍 Selected project tasks:', selectedProject?.tasks);
+            console.log('🔍 Selected project taskIds:', selectedProject?.taskIds);
             
             // Add a small delay to prevent click-outside interference
             setTimeout(() => {
@@ -337,6 +352,10 @@ const ProjectManagement: React.FC = () => {
                     type: 'DELETE_TASK',
                     payload: { taskId: taskId, lamportTs: lamportCounter, isLocal: true }
                 });
+                
+                // Debug logging after deletion
+                console.log('🔍 DEBUG: After task deletion dispatch');
+                console.log('🔍 All tasks in state after dispatch:', Array.from(state.tasks.entries()));
                 
                 // Send delete event to server
                 if (taskToDelete) {
@@ -445,7 +464,7 @@ const ProjectManagement: React.FC = () => {
                     <ProjectsSection
                         projects={projects}
                         selectedProject={selectedProject}
-                        loading={loading}
+                        loading={false}
                         loadingProjects={loadingProjects}
                         onProjectSelect={(project) => setSelectedProjectId(project?.id || null)}
                         onProjectEdit={openProjectDialog}
@@ -456,7 +475,7 @@ const ProjectManagement: React.FC = () => {
                 <Grid size={{ xs: 12, md: 6 }}>
                     <TasksSection
                         selectedProject={selectedProject}
-                        loading={loading}
+                        loading={false}
                         loadingTasks={loadingTasks}
                         onTaskEdit={openTaskDialog}
                         onTaskDelete={handleDeleteTask}
