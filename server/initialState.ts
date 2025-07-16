@@ -14,7 +14,7 @@ export class InitialStateManager {
             id: project1Id,
             name: 'Example Project 1',
             description: 'This is the first example project to get you started',
-            tasks: [],
+            taskIds: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             lamportTs: this.lamportCounter
@@ -27,7 +27,7 @@ export class InitialStateManager {
             id: project2Id,
             name: 'Example Project 2',
             description: 'This is the second example project',
-            tasks: [],
+            taskIds: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             lamportTs: this.lamportCounter
@@ -51,8 +51,8 @@ export class InitialStateManager {
             lamportTs: this.lamportCounter
         };
 
-        // Add task to first project
-        project1.tasks.push(task1);
+        // Add task ID to first project
+        project1.taskIds.push(task1Id);
 
         // Add first project event
         this.lamportCounter++;

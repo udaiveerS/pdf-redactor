@@ -54,7 +54,7 @@ export interface ProjectNode {
     id: string;
     name: string;
     description: string;
-    tasks: TaskNode[];
+    taskIds: ID[];      // References to tasks in the Map-based state
     createdAt: string;
     updatedAt: string;
     lamportTs?: number;

@@ -45,9 +45,18 @@ try {
 // Parse JSON request bodies
 app.use(express.json());
 
-// Serve static files from the React build directory
-// This allows the frontend to be served from the same server
-app.use(express.static(path.join(fileURLToPath(import.meta.url), '../public')));
+// Conditional static file serving based on container type
+const isBackendOnly = process.env.BACKEND_ONLY === 'true';
+
+if (isBackendOnly) {
+    // Backend-only server - no static file serving
+    console.log('📁 Backend-only server - no static files');
+} else {
+    // Frontend container - serve React app
+    const buildPath = path.join(process.cwd(), 'build');
+    console.log('📁 Serving static files from:', buildPath);
+    app.use(express.static(buildPath));
+}
 
 // ===== API ENDPOINTS =====
 
@@ -69,7 +78,41 @@ app.get('/api/health', (req: Request, res: Response) => {
     });
 });
 
+// ===== CONDITIONAL ROUTING =====
 
+if (isBackendOnly) {
+    /**
+     * Catch-all route for backend-only server
+     * 
+     * Returns 404 for any non-API routes since this is backend-only.
+     * Frontend is served by separate client containers.
+     * 
+     * GET /*
+     * Response: 404 Not Found
+     */
+    app.get('*', (req: Request, res: Response) => {
+        res.status(404).json({
+            error: 'Not Found',
+            message: 'This is a backend-only server. Frontend is served by client containers.',
+            availableEndpoints: ['/api/health']
+        });
+    });
+} else {
+    /**
+     * Catch-all route for React Router
+     * 
+     * Serves the React app's index.html for any route that doesn't match an API endpoint.
+     * This enables client-side routing to work properly.
+     * 
+     * GET /*
+     * Response: React app's index.html file
+     */
+    app.get('*', (req: Request, res: Response) => {
+        const indexPath = path.join(process.cwd(), 'build', 'index.html');
+        console.log('📄 Serving index.html from:', indexPath);
+        res.sendFile(indexPath);
+    });
+}
 
 // ===== SERVER STARTUP =====
 
