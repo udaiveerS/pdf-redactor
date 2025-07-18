@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { EventNode, HandshakeMessage, EventAction, EntityType } from '../../shared/types';
 
 declare global {
@@ -126,7 +127,7 @@ export const useWebSocket = (url: string) => {
             console.log(`📤 Incrementing Lamport counter from ${oldValue} to ${lamportCounter.current}`);
 
             const event: EventNode = {
-                id: `${nodeType}-${nodeId}-${Date.now()}-${clientId.current}`,
+                id: uuidv4(),
                 lamportTs: lamportCounter.current,
                 timestamp: new Date().toISOString(),
                 action,

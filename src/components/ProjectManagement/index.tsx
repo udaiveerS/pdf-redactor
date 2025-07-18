@@ -148,7 +148,7 @@ const ProjectManagement: React.FC = () => {
                 clearEventQueue();
             }
         };
-    }, [eventQueue, clearEventQueue]);
+    }, [eventQueue, clearEventQueue, state.tasks, projects]);
 
     // Handle selected project cleanup when projects are deleted
     React.useEffect(() => {
@@ -436,6 +436,7 @@ const ProjectManagement: React.FC = () => {
             <ProjectDialog
                 open={projectDialogOpen}
                 project={editingProject || undefined}
+                lamportCounter={lamportCounter}
                 onClose={() => setProjectDialogOpen(false)}
                 onSubmit={handleProjectSubmit}
                 loading={false}
@@ -445,6 +446,7 @@ const ProjectManagement: React.FC = () => {
                 open={taskDialogOpen}
                 task={editingTask ?? undefined}
                 projectId={selectedProject?.id || ''}
+                lamportCounter={lamportCounter}
                 onClose={() => setTaskDialogOpen(false)}
                 onSubmit={handleTaskSubmit}
                 loading={false}

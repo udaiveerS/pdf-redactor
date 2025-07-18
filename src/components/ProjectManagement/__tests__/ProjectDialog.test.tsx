@@ -8,7 +8,7 @@ const mockProject: ProjectNode = {
     id: 'test-project-1',
     name: 'Test Project',
     description: 'A test project description',
-    tasks: [],
+    taskIds: [],
     createdAt: '2024-01-01T00:00:00.000Z',
     updatedAt: '2024-01-01T00:00:00.000Z',
     lamportTs: 10
@@ -16,6 +16,7 @@ const mockProject: ProjectNode = {
 
 const mockProps = {
     open: true,
+    lamportCounter: 42,
     onClose: jest.fn(),
     onSubmit: jest.fn(),
     loading: false

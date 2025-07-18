@@ -18,9 +18,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        REACT_APP_CLIENT_ID: client-1
-        REACT_APP_PORT: 8081
     ports:
       - "8081:8080"
     environment:
@@ -37,9 +34,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        REACT_APP_CLIENT_ID: client-2
-        REACT_APP_PORT: 8082
     ports:
       - "8082:8080"
     environment:
@@ -56,9 +50,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        REACT_APP_CLIENT_ID: client-3
-        REACT_APP_PORT: 8083
     ports:
       - "8083:8080"
     environment:

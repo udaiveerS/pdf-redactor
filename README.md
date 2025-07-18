@@ -92,9 +92,9 @@ The backend maintains an append-only event log where each event is immutable and
 // Server maintains global Lamport counter
 private lamportCounter = 0;
 
-// Each event gets a unique timestamp
+// Each event gets a unique UUID
 const event: EventNode = {
-    id: `${nodeType}-${nodeId}-${Date.now()}-${clientId}`,
+    id: uuidv4(),
     lamportTs: this.lamportCounter++,
     timestamp: new Date().toISOString(),
     action,
@@ -184,7 +184,7 @@ export const useWebSocket = (url: string) => {
     // Send events to server
     const sendEvent = (action: EventAction, nodeType: EntityType, nodeId: string, data: any) => {
         const event: EventNode = {
-            id: `${nodeType}-${nodeId}-${Date.now()}-${clientId.current}`,
+            id: uuidv4(),
             lamportTs: ++lamportCounter.current,
             timestamp: new Date().toISOString(),
             action,

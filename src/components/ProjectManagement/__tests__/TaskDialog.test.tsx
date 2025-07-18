@@ -22,6 +22,7 @@ const mockTask: TaskNode = {
 const mockProps = {
     open: true,
     projectId: 'test-project-1',
+    lamportCounter: 42,
     onClose: jest.fn(),
     onSubmit: jest.fn(),
     loading: false

@@ -69,4 +69,60 @@ describe('Map-based Reducer - DELETE_PROJECT', () => {
         // Should not change state
         expect(newState).toEqual(initialState);
     });
+
+    // Test to reproduce the Date.now() vs Lamport counter issue for projects
+    it('should handle delete when project was created with Date.now() timestamp', () => {
+        // Simulate project created with Date.now() (very high timestamp)
+        const projectWithHighTimestamp: ProjectNode = {
+            id: 'project-1',
+            name: 'Project with Date.now() timestamp',
+            description: 'Test Description',
+            taskIds: [],
+            createdAt: '2023-01-01T00:00:00Z',
+            updatedAt: '2023-01-01T00:00:00Z',
+            lamportTs: 1752808026463 // Simulates Date.now() value
+        };
+
+        initialState.projects.set('project-1', projectWithHighTimestamp);
+
+        // Try to delete with proper Lamport counter (low timestamp)
+        const action: MapAction = {
+            type: 'DELETE_PROJECT',
+            payload: { projectId: 'project-1', lamportTs: 27, isLocal: false }
+        };
+
+        const newState = mapReducer(initialState, action);
+
+        // Should NOT delete because 27 < 1752808026463 (LWW logic)
+        expect(newState.projects.has('project-1')).toBe(true);
+        expect(newState.projects.get('project-1')).toEqual(projectWithHighTimestamp);
+    });
+
+    // Test to verify that proper Lamport counter sequence works for projects
+    it('should handle delete when project was created with proper Lamport counter', () => {
+        // Project created with proper Lamport counter
+        const projectWithProperTimestamp: ProjectNode = {
+            id: 'project-1',
+            name: 'Project with proper Lamport timestamp',
+            description: 'Test Description',
+            taskIds: [],
+            createdAt: '2023-01-01T00:00:00Z',
+            updatedAt: '2023-01-01T00:00:00Z',
+            lamportTs: 27 // Proper incremental Lamport counter
+        };
+
+        initialState.projects.set('project-1', projectWithProperTimestamp);
+
+        // Delete with higher Lamport counter
+        const action: MapAction = {
+            type: 'DELETE_PROJECT',
+            payload: { projectId: 'project-1', lamportTs: 28, isLocal: false }
+        };
+
+        const newState = mapReducer(initialState, action);
+
+        // Should delete because 28 > 27 (LWW logic)
+        expect(newState.projects.has('project-1')).toBe(false);
+        expect(newState.projects.size).toBe(0);
+    });
 }); 

@@ -12,7 +12,7 @@ import {
 } from '@mui/material';
 import { ProjectDialogProps } from './types';
 
-const ProjectDialog: React.FC<ProjectDialogProps> = ({ open, project, onClose, onSubmit, loading }) => {
+const ProjectDialog: React.FC<ProjectDialogProps> = ({ open, project, lamportCounter, onClose, onSubmit, loading }) => {
     const [formData, setFormData] = useState({
         name: '',
         description: ''
@@ -27,17 +27,17 @@ const ProjectDialog: React.FC<ProjectDialogProps> = ({ open, project, onClose, o
                 name: project.name,
                 description: project.description
             });
-            // Use project's timestamp if available, otherwise use current time
-            setLamportTs(project.lamportTs || Date.now());
+            // Use project's timestamp if available, otherwise use lamportCounter
+            setLamportTs(project.lamportTs || lamportCounter);
         } else {
             setFormData({
                 name: '',
                 description: ''
             });
-            // For new projects, use current timestamp
-            setLamportTs(Date.now());
+            // For new projects, use lamportCounter
+            setLamportTs(lamportCounter);
         }
-    }, [project, open]); // Add 'open' to reset when dialog opens/closes
+    }, [project, open, lamportCounter]); // Add 'open' to reset when dialog opens/closes
 
     const handleSubmit = () => {
         // Include Lamport timestamp in the form data

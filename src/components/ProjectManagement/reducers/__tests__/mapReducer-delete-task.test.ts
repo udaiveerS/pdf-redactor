@@ -188,6 +188,87 @@ describe('Map-based Reducer - DELETE_TASK', () => {
         expect(newState.tasks.get('task-3')).toEqual(task3);
     });
 
+    // Test to reproduce the Date.now() vs Lamport counter issue
+    it('should handle delete when task was created with Date.now() timestamp', () => {
+        const project: ProjectNode = {
+            id: 'project-1',
+            name: 'Test Project',
+            description: 'Test Description',
+            taskIds: ['task-1'],
+            createdAt: '2023-01-01T00:00:00Z',
+            updatedAt: '2023-01-01T00:00:00Z',
+            lamportTs: 1
+        };
+
+        // Simulate task created with Date.now() (very high timestamp)
+        const taskWithHighTimestamp: TaskNode = {
+            id: 'task-1',
+            projectId: 'project-1',
+            title: 'Task with Date.now() timestamp',
+            status: 'pending',
+            configuration: { priority: 1 },
+            createdAt: '2023-01-01T00:00:00Z',
+            updatedAt: '2023-01-01T00:00:00Z',
+            lamportTs: 1752808026463 // Simulates Date.now() value
+        };
+
+        initialState.projects.set('project-1', project);
+        initialState.tasks.set('task-1', taskWithHighTimestamp);
+
+        // Try to delete with proper Lamport counter (low timestamp)
+        const action: MapAction = {
+            type: 'DELETE_TASK',
+            payload: { taskId: 'task-1', lamportTs: 27, isLocal: false }
+        };
+
+        const newState = mapReducer(initialState, action);
+
+        // Should NOT delete because 27 < 1752808026463 (LWW logic)
+        expect(newState.tasks.has('task-1')).toBe(true);
+        expect(newState.tasks.get('task-1')).toEqual(taskWithHighTimestamp);
+        expect(newState.projects.get('project-1')?.taskIds).toEqual(['task-1']);
+    });
+
+    // Test to verify that proper Lamport counter sequence works
+    it('should handle delete when task was created with proper Lamport counter', () => {
+        const project: ProjectNode = {
+            id: 'project-1',
+            name: 'Test Project',
+            description: 'Test Description',
+            taskIds: ['task-1'],
+            createdAt: '2023-01-01T00:00:00Z',
+            updatedAt: '2023-01-01T00:00:00Z',
+            lamportTs: 1
+        };
+
+        // Task created with proper Lamport counter
+        const taskWithProperTimestamp: TaskNode = {
+            id: 'task-1',
+            projectId: 'project-1',
+            title: 'Task with proper Lamport timestamp',
+            status: 'pending',
+            configuration: { priority: 1 },
+            createdAt: '2023-01-01T00:00:00Z',
+            updatedAt: '2023-01-01T00:00:00Z',
+            lamportTs: 27 // Proper incremental Lamport counter
+        };
+
+        initialState.projects.set('project-1', project);
+        initialState.tasks.set('task-1', taskWithProperTimestamp);
+
+        // Delete with higher Lamport counter
+        const action: MapAction = {
+            type: 'DELETE_TASK',
+            payload: { taskId: 'task-1', lamportTs: 28, isLocal: false }
+        };
+
+        const newState = mapReducer(initialState, action);
+
+        // Should delete because 28 > 27 (LWW logic)
+        expect(newState.tasks.has('task-1')).toBe(false);
+        expect(newState.projects.get('project-1')?.taskIds).toEqual([]);
+    });
+
     // Test to check if there's an issue with task IDs being the same
     it('should handle tasks with different IDs correctly', () => {
         const project: ProjectNode = {

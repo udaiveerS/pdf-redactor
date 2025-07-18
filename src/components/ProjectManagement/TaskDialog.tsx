@@ -18,7 +18,7 @@ import {
 import { TaskNode } from '../../../shared/types';
 import { TaskDialogProps } from './types';
 
-const TaskDialog: React.FC<TaskDialogProps> = ({ open, task, projectId, onClose, onSubmit, loading }) => {
+const TaskDialog: React.FC<TaskDialogProps> = ({ open, task, projectId, lamportCounter, onClose, onSubmit, loading }) => {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -63,8 +63,8 @@ const TaskDialog: React.FC<TaskDialogProps> = ({ open, task, projectId, onClose,
                 priority: task.configuration.priority,
                 dueDate: dueDateFormatted
             });
-            // Use task's timestamp if available, otherwise use current time
-            setLamportTs(task.lamportTs || Date.now());
+            // Use task's timestamp if available, otherwise use lamportCounter
+            setLamportTs(task.lamportTs || lamportCounter);
         } else {
             setFormData({
                 title: '',
@@ -73,10 +73,10 @@ const TaskDialog: React.FC<TaskDialogProps> = ({ open, task, projectId, onClose,
                 priority: 1,
                 dueDate: ''
             });
-            // For new tasks, use current timestamp
-            setLamportTs(Date.now());
+            // For new tasks, use lamportCounter
+            setLamportTs(lamportCounter);
         }
-    }, [task, open]); // Add 'open' to reset when dialog opens/closes
+    }, [task, open, lamportCounter]); // Add 'open' to reset when dialog opens/closes
 
     const handleSubmit = () => {
         // Ensure consistent date format when saving

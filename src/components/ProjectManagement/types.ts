@@ -19,6 +19,7 @@ export interface TaskCardProps {
 export interface ProjectDialogProps {
     open: boolean;
     project?: ProjectNode;
+    lamportCounter: number;
     onClose: () => void;
     onSubmit: (project: Partial<ProjectNode>) => void;
     loading: boolean;
@@ -28,6 +29,7 @@ export interface TaskDialogProps {
     open: boolean;
     task?: TaskNode;
     projectId: string;
+    lamportCounter: number;
     onClose: () => void;
     onSubmit: (task: Partial<TaskNode>) => void;
     loading: boolean;
