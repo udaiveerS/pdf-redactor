@@ -33,7 +33,7 @@
   },
   "scripts": {
     "start": "NODE_OPTIONS=\"--loader ts-node/esm\" node server/index.ts",
-    "dev": "concurrently \"react-scripts start\" \"NODE_ENV=development ts-node --esm server/index.ts\"",
+    "dev": "concurrently \"react-scripts start\" \"cd server && NODE_ENV=development node --loader ts-node/esm index.ts\"",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -65,5 +65,9 @@
     "@types/react-dom": "^19.1.6",
     "concurrently": "^9.2.0",
     "ts-node": "^10.9.2"
+  },
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
   }
 }
