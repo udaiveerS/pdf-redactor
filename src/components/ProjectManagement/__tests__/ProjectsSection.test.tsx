@@ -9,7 +9,7 @@ const mockProjects: ProjectNode[] = [
         id: 'project-1',
         name: 'Project 1',
         description: 'First project',
-        tasks: [],
+        taskIds: [],
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
         lamportTs: 5
@@ -18,18 +18,7 @@ const mockProjects: ProjectNode[] = [
         id: 'project-2',
         name: 'Project 2',
         description: 'Second project',
-        tasks: [
-            {
-                id: 'task-1',
-                projectId: 'project-2',
-                title: 'Task 1',
-                status: 'pending',
-                configuration: { priority: 1, description: 'Task 1 description' },
-                createdAt: '2024-01-01T00:00:00.000Z',
-                updatedAt: '2024-01-01T00:00:00.000Z',
-                lamportTs: 10
-            }
-        ],
+        taskIds: ['task-1'],
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
         lamportTs: 15

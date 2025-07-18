@@ -42,14 +42,17 @@ const TaskDialog: React.FC<TaskDialogProps> = ({ open, task, projectId, lamportC
                         // It's an ISO date, extract just the date part
                         dateStr = dateStr.split('T')[0];
                     }
-                    // Ensure it's in YYYY-MM-DD format
-                    const date = new Date(dateStr + 'T12:00:00'); // Use noon to avoid timezone issues
-                    dueDateFormatted = date.toISOString().split('T')[0];
-                    console.log('🔍 Converting due date for edit:', {
-                        original: task.configuration.dueDate,
-                        processed: dateStr,
-                        formatted: dueDateFormatted
-                    });
+                    // Simple validation: check if it's in YYYY-MM-DD format
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                        dueDateFormatted = dateStr;
+                        console.log('🔍 Converting due date for edit:', {
+                            original: task.configuration.dueDate,
+                            processed: dateStr,
+                            formatted: dueDateFormatted
+                        });
+                    } else {
+                        throw new Error('Invalid date format');
+                    }
                 } catch (error) {
                     console.warn('Invalid due date format:', task.configuration.dueDate);
                     dueDateFormatted = '';
@@ -83,13 +86,16 @@ const TaskDialog: React.FC<TaskDialogProps> = ({ open, task, projectId, lamportC
         let dueDate = undefined;
         if (formData.dueDate) {
             try {
-                // Ensure the date is in YYYY-MM-DD format
-                const date = new Date(formData.dueDate + 'T12:00:00'); // Use noon to avoid timezone issues
-                dueDate = date.toISOString().split('T')[0];
-                console.log('🔍 Saving due date:', {
-                    input: formData.dueDate,
-                    processed: dueDate
-                });
+                // Simple validation: check if it's in YYYY-MM-DD format
+                if (/^\d{4}-\d{2}-\d{2}$/.test(formData.dueDate)) {
+                    dueDate = formData.dueDate;
+                    console.log('🔍 Saving due date:', {
+                        input: formData.dueDate,
+                        processed: dueDate
+                    });
+                } else {
+                    throw new Error('Invalid date format');
+                }
             } catch (error) {
                 console.warn('Invalid due date format:', formData.dueDate);
                 dueDate = formData.dueDate; // Fallback to original value
@@ -190,9 +196,12 @@ const TaskDialog: React.FC<TaskDialogProps> = ({ open, task, projectId, lamportC
                                     // It's an ISO date, extract just the date part
                                     dateStr = dateStr.split('T')[0];
                                 }
-                                // Ensure it's in YYYY-MM-DD format
-                                const date = new Date(dateStr + 'T12:00:00'); // Use noon to avoid timezone issues
-                                dueDateFormatted = date.toISOString().split('T')[0];
+                                // Simple validation: check if it's in YYYY-MM-DD format
+                                if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                                    dueDateFormatted = dateStr;
+                                } else {
+                                    throw new Error('Invalid date format');
+                                }
                             } catch (error) {
                                 console.warn('Invalid due date format:', task.configuration.dueDate);
                                 dueDateFormatted = '';

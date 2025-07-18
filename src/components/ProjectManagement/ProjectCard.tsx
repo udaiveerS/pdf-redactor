@@ -30,7 +30,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isSelected, isLoadin
                         {project.name}
                     </Typography>
                     <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
-                        {project.tasks?.length || 0} tasks
+                        {project.taskIds?.length || 0} tasks
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                         {project.description}

@@ -8,18 +8,7 @@ const mockProject: ProjectNode = {
     id: 'test-project-1',
     name: 'Test Project',
     description: 'A test project description',
-    tasks: [
-        {
-            id: 'task-1',
-            projectId: 'test-project-1',
-            title: 'Task 1',
-            status: 'pending',
-            configuration: { priority: 1, description: 'Task 1 description' },
-            createdAt: '2024-01-01T00:00:00.000Z',
-            updatedAt: '2024-01-01T00:00:00.000Z',
-            lamportTs: 10
-        }
-    ],
+    taskIds: ['task-1'],
     createdAt: '2024-01-01T00:00:00.000Z',
     updatedAt: '2024-01-01T00:00:00.000Z',
     lamportTs: 5

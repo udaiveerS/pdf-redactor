@@ -13,7 +13,7 @@ export const useWebSocket = (url: string) => {
     const [eventQueue, setEventQueue] = useState<EventNode[]>([]);
     const ws = useRef<WebSocket | null>(null);
     const lamportCounter = useRef<number>(0);
-    const clientId = useRef<string>(process.env.REACT_APP_CLIENT_ID || `client-${Date.now()}`);
+    const clientId = useRef<string>(`client-${window.location.port || '8081'}`);
 
     // Type guard for EventNode
     const isEventNode = (data: any): data is EventNode => {

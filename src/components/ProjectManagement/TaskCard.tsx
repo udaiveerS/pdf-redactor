@@ -64,7 +64,17 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isLoading, onEdit, onDelete }
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                             <ScheduleIcon sx={{ fontSize: 20, mr: 1 }} />
                             <Typography variant="body2">
-                                Due: {new Date(task.configuration.dueDate).toLocaleDateString()}
+                                Due: {(() => {
+                                    const dateStr = task.configuration.dueDate.includes('T') 
+                                        ? task.configuration.dueDate.split('T')[0] 
+                                        : task.configuration.dueDate;
+                                    // Convert YYYY-MM-DD to M-D-YYYY
+                                    const parts = dateStr.split('-');
+                                    if (parts.length === 3) {
+                                        return `${parts[1]}-${parts[2]}-${parts[0]}`;
+                                    }
+                                    return dateStr;
+                                })()}
                             </Typography>
                         </Box>
                     )}
