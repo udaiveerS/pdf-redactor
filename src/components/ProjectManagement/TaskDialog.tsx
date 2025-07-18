@@ -32,12 +32,36 @@ const TaskDialog: React.FC<TaskDialogProps> = ({ open, task, projectId, onClose,
 
     useEffect(() => {
         if (task) {
+            // Convert any date format to YYYY-MM-DD format for the date input
+            let dueDateFormatted = '';
+            if (task.configuration.dueDate) {
+                try {
+                    // Handle both ISO dates and YYYY-MM-DD formats
+                    let dateStr = task.configuration.dueDate;
+                    if (dateStr.includes('T')) {
+                        // It's an ISO date, extract just the date part
+                        dateStr = dateStr.split('T')[0];
+                    }
+                    // Ensure it's in YYYY-MM-DD format
+                    const date = new Date(dateStr + 'T12:00:00'); // Use noon to avoid timezone issues
+                    dueDateFormatted = date.toISOString().split('T')[0];
+                    console.log('🔍 Converting due date for edit:', {
+                        original: task.configuration.dueDate,
+                        processed: dateStr,
+                        formatted: dueDateFormatted
+                    });
+                } catch (error) {
+                    console.warn('Invalid due date format:', task.configuration.dueDate);
+                    dueDateFormatted = '';
+                }
+            }
+            
             setFormData({
                 title: task.title,
                 description: task.configuration.description || '',
                 status: task.status === 'in_progress' ? 'in-progress' : task.status,
                 priority: task.configuration.priority,
-                dueDate: task.configuration.dueDate || ''
+                dueDate: dueDateFormatted
             });
             // Use task's timestamp if available, otherwise use current time
             setLamportTs(task.lamportTs || Date.now());
@@ -55,13 +79,30 @@ const TaskDialog: React.FC<TaskDialogProps> = ({ open, task, projectId, onClose,
     }, [task, open]); // Add 'open' to reset when dialog opens/closes
 
     const handleSubmit = () => {
+        // Ensure consistent date format when saving
+        let dueDate = undefined;
+        if (formData.dueDate) {
+            try {
+                // Ensure the date is in YYYY-MM-DD format
+                const date = new Date(formData.dueDate + 'T12:00:00'); // Use noon to avoid timezone issues
+                dueDate = date.toISOString().split('T')[0];
+                console.log('🔍 Saving due date:', {
+                    input: formData.dueDate,
+                    processed: dueDate
+                });
+            } catch (error) {
+                console.warn('Invalid due date format:', formData.dueDate);
+                dueDate = formData.dueDate; // Fallback to original value
+            }
+        }
+        
         // Include Lamport timestamp in the form data
         onSubmit({
             title: formData.title,
             configuration: {
                 description: formData.description,
                 priority: formData.priority,
-                dueDate: formData.dueDate || undefined
+                dueDate: dueDate
             },
             status: formData.status === 'in-progress' ? 'in_progress' : formData.status,
             lamportTs: lamportTs
@@ -139,12 +180,31 @@ const TaskDialog: React.FC<TaskDialogProps> = ({ open, task, projectId, onClose,
                 <Button onClick={() => {
                     // Reset form data to original values
                     if (task) {
+                        // Convert any date format to YYYY-MM-DD format for the date input
+                        let dueDateFormatted = '';
+                        if (task.configuration.dueDate) {
+                            try {
+                                // Handle both ISO dates and YYYY-MM-DD formats
+                                let dateStr = task.configuration.dueDate;
+                                if (dateStr.includes('T')) {
+                                    // It's an ISO date, extract just the date part
+                                    dateStr = dateStr.split('T')[0];
+                                }
+                                // Ensure it's in YYYY-MM-DD format
+                                const date = new Date(dateStr + 'T12:00:00'); // Use noon to avoid timezone issues
+                                dueDateFormatted = date.toISOString().split('T')[0];
+                            } catch (error) {
+                                console.warn('Invalid due date format:', task.configuration.dueDate);
+                                dueDateFormatted = '';
+                            }
+                        }
+                        
                         setFormData({
                             title: task.title,
                             description: task.configuration.description || '',
                             status: task.status === 'in_progress' ? 'in-progress' : task.status,
                             priority: task.configuration.priority,
-                            dueDate: task.configuration.dueDate || ''
+                            dueDate: dueDateFormatted
                         });
                     } else {
                         setFormData({

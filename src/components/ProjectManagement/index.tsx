@@ -240,6 +240,10 @@ const ProjectManagement: React.FC = () => {
                 const updatedTask: TaskNode = { 
                     ...editingTask, 
                     ...formData, 
+                    configuration: {
+                        ...editingTask.configuration,
+                        ...formData.configuration
+                    },
                     updatedAt: new Date().toISOString(),
                     lamportTs: formData.lamportTs || lamportCounter 
                 };
@@ -270,7 +274,8 @@ const ProjectManagement: React.FC = () => {
                     status: formData.status || 'pending',
                     configuration: {
                         priority: formData.configuration?.priority || 1,
-                        description: formData.configuration?.description || ''
+                        description: formData.configuration?.description || '',
+                        dueDate: formData.configuration?.dueDate
                     },
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
@@ -401,63 +406,6 @@ const ProjectManagement: React.FC = () => {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 WebSocket URL: {wsUrl}
             </Typography>
-
-            {/* Test Error Buttons - Remove in production */}
-            <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                <Button 
-                    variant="outlined" 
-                    color="warning" 
-                    size="small"
-                    onClick={() => setError('Test error message - this is a sample error for testing')}
-                >
-                    Test Error Alert
-                </Button>
-                <Button 
-                    variant="outlined" 
-                    color="warning" 
-                    size="small"
-                    onClick={() => {
-                        try {
-                            // Simulate a WebSocket error
-                            const invalidEvent = {
-                                action: 'invalid_action',
-                                nodeType: 'unknown_type',
-                                nodeId: 'test-id',
-                                lamportTs: 1,
-                                data: null
-                            };
-                            // This will trigger the default case in our switch statement
-                            console.log('Triggering invalid event:', invalidEvent);
-                            setError('Invalid event action: invalid_action');
-                        } catch (err) {
-                            setError(`Test error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-                        }
-                    }}
-                >
-                    Test Invalid Event
-                </Button>
-                <Button 
-                    variant="outlined" 
-                    color="warning" 
-                    size="small"
-                    onClick={() => {
-                        try {
-                            // Simulate a reducer error with invalid payload
-                            dispatch({
-                                type: 'UPDATE_PROJECT',
-                                payload: { 
-                                    projectId: 'invalid-project',
-                                    // Missing project and lamportTs
-                                } as any
-                            });
-                        } catch (err) {
-                            setError(`Reducer error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-                        }
-                    }}
-                >
-                    Test Invalid Payload
-                </Button>
-            </Box>
 
             <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 6 }}>
