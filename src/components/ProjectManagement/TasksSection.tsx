@@ -1,7 +1,7 @@
 import React from 'react';
 import { Paper, Typography, Box, Button } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
-import { ProjectNode } from '../../../shared/types';
+import { ProjectWithTasks } from './reducers/types';
 import { TasksSectionProps } from './types';
 import TaskCard from './TaskCard';
 

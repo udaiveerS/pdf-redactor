@@ -1,4 +1,5 @@
 import { ProjectNode, TaskNode } from '../../../shared/types';
+import { ProjectWithTasks } from './reducers/types';
 
 export interface ProjectCardProps {
     project: ProjectNode;
@@ -47,7 +48,7 @@ export interface ProjectsSectionProps {
 }
 
 export interface TasksSectionProps {
-    selectedProject: ProjectNode | null;
+    selectedProject: ProjectWithTasks | null;
     loading: boolean;
     loadingTasks: Set<string>;
     onTaskEdit: (task: TaskNode) => void;
