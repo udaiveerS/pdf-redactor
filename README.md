@@ -225,6 +225,8 @@ const clientId = window.__COLAB_CLIENT_ID || 'Unknown';
 const port = window.location.port || '80';
 ```
 
+
+
 ## Testing
 
 Run all test cases with the following commands:
@@ -247,3 +249,29 @@ The test suite covers:
 - Lamport timestamp ordering
 - React component behavior
 - State management logic
+
+## Trade‑offs & Current Limitations
+
+* **In‑memory append‑only log (MVP)** – simplifies the demo and keeps the code easy to read, but a node crash loses history. In production this swaps to Postgres/WAL or Kafka.
+* **Last‑Write‑Wins (Lamport + UUID tie‑break)** – good enough for project/task CRUD; richer fields (rich‑text notes) would require CRDT or OT to avoid data loss on concurrent edits.
+* **Maps in React state (immutable copies)** – keeps the reducer 100 % "React‑style" and DevTools‑friendly, at the cost of cloning each map per event. If throughput ever bottlenecks, migrate to `useRef` + batched renders or Immer for structural sharing.
+* **WebSocket echo = ACK** – simpler than a dedicated ACK/NACK envelope, but one lost packet can delay retries until the reconnect heartbeat.
+* **Single‑node WS capacity** – on a 4 vCPU / 8 GB host, a single Node.js process handles roughly **30 k–60 k idle WebSocket clients** (≈ 8 kB per socket) or ~40 k msg/s before CPU/NIC saturation; horizontal scaling is required beyond that.
+* **No per‑entity ACL/auth yet** – assumes all connected clients may see all projects. A channel‑level ACL would be layered in front of the fan‑out bus.
+
+---
+
+## Scaling Strategy
+
+| Layer | Short‑term ✅ (today's code) | Long‑term ➡️ (next stage) |
+|-------|-----------------------------|---------------------------|
+| **Event store** | In‑memory array | **Postgres append‑only table** or **Kafka topic**. Batch inserts; WAL replication for HA. Hourly snapshots to S3/GCS so new pods replay only delta events. |
+| **WebSocket tier** | Single Node pod | Multiple stateless WS pods behind an L4/L7 load‑balancer. **Sticky sessions** or **Redis pub/sub** so any pod can deliver any event. Autoscale via HPA/KEDA on active‑connection count. |
+| **Partitioning** | All teams on one shard | **Consistent hashing on `teamId`** → `(hash(teamId) mod N)`. Adding a shard moves only ≈1/N of keys, preserving Lamport order per team without cross‑shard coordination. |
+| **Hot‑failover** | Manual restart | Each WS pod streams its live events to Redis; on pod crash, surviving pods refill any dropped client from the durable log. |
+| **Client resilience** | Local `lamportTs`, retry on socket close | Outbox with exponential back‑off + per‑event ACK timeout. Local Storage snapshot (`projects`, `tasks`, `lastTs`) used in handshake: `HELLO { lastSeenTs }`. |
+| **Observability** | Console logs | Prometheus / Grafana dashboards: p50/p95/p99 event‑commit latency, fan‑out lag, reconnect rate. Structured logs ship to Loki/ELK for replay debugging. |
+
+**Key win of consistent hashing:** all events for one team/project land on a single shard → total‑order guarantee without distributed locking, while capacity scales linearly.
+
+*Future work:* adopt CRDT patches for text fields and integrate row‑level ACL.
