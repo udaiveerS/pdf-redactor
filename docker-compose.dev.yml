@@ -19,6 +19,7 @@ services:
       - WDS_SOCKET_PORT=0
       - GENERATE_SOURCEMAP=false
       - REACT_APP_CLIENT_ID=client-1
+      - REACT_APP_PORT=3000
     volumes:
       - .:/app
     restart: unless-stopped

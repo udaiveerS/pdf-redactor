@@ -14,7 +14,15 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the React app
+# Accept build arguments for client-specific environment variables
+ARG REACT_APP_CLIENT_ID=client-1
+ARG REACT_APP_PORT=8081
+
+# Set environment variables for the build process
+ENV REACT_APP_CLIENT_ID=$REACT_APP_CLIENT_ID
+ENV REACT_APP_PORT=$REACT_APP_PORT
+
+# Build the React app with client-specific environment variables
 RUN npm run build
 
 # Expose port

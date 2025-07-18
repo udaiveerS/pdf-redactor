@@ -25,6 +25,7 @@ services:
       - NODE_ENV=production
       - PORT=8080
       - REACT_APP_CLIENT_ID=client-1
+      - REACT_APP_PORT=8081
     restart: unless-stopped
     networks:
       - project-colab-network
