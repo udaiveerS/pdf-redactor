@@ -25,12 +25,6 @@ export interface HandshakeMessage {
     lastKnownLamportTs: number;
 }
 
-export interface HandshakeResponseMessage {
-    type: 'handshake_response';
-    serverLamportTs: number;
-    missingEvents: EventNode[];
-}
-
 
 
 export interface TaskNode {
