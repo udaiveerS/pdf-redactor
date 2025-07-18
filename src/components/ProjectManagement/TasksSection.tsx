@@ -36,10 +36,6 @@ const TasksSection: React.FC<TasksSectionProps> = ({
                     </Button>
                 </Box>
 
-                <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-                    {selectedProject.description}
-                </Typography>
-
                 {!selectedProject.tasks || selectedProject.tasks.length === 0 ? (
                     <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center', p: 4, flex: 1 }}>
                         No tasks yet. Create your first task!
