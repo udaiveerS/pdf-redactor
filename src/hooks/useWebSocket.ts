@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { EventNode, HandshakeMessage, EventAction, EntityType } from '../../shared/types';
 
+declare global {
+    interface Window {
+        __COLAB_CLIENT_ID?: string;
+    }
+}
+
 export const useWebSocket = (url: string) => {
     const [isConnected, setIsConnected] = useState(false);
     const [eventQueue, setEventQueue] = useState<EventNode[]>([]);
@@ -78,6 +84,9 @@ export const useWebSocket = (url: string) => {
                             });
                         } else {
                             console.log('📨 Received non-event message:', data);
+                            if (data.type === 'handshake' && data.clientId) {
+                                window.__COLAB_CLIENT_ID = data.clientId;
+                            }
                         }
                     } catch (error) {
                         console.error('❌ Error parsing WebSocket message:', error);
