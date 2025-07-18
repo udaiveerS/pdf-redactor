@@ -78,6 +78,39 @@ app.get('/api/health', (req: Request, res: Response) => {
     });
 });
 
+/**
+ * Client Information Endpoint
+ * 
+ * Returns client identification information from request headers and environment.
+ * Used for debugging client identification issues in multi-client setups.
+ * 
+ * GET /api/client-info
+ * Response: Client information including headers, environment variables, and request details
+ */
+app.get('/api/client-info', (req: Request, res: Response) => {
+    res.json({
+        timestamp: new Date().toISOString(),
+        serverPort: PORT,
+        requestHeaders: {
+            host: req.headers.host,
+            'user-agent': req.headers['user-agent'],
+            'x-forwarded-for': req.headers['x-forwarded-for'],
+            'x-real-ip': req.headers['x-real-ip']
+        },
+        environment: {
+            NODE_ENV: process.env.NODE_ENV,
+            PORT: process.env.PORT,
+            BACKEND_ONLY: process.env.BACKEND_ONLY
+        },
+        requestInfo: {
+            method: req.method,
+            url: req.url,
+            ip: req.ip,
+            originalUrl: req.originalUrl
+        }
+    });
+});
+
 // ===== CONDITIONAL ROUTING =====
 
 if (isBackendOnly) {
@@ -94,7 +127,7 @@ if (isBackendOnly) {
         res.status(404).json({
             error: 'Not Found',
             message: 'This is a backend-only server. Frontend is served by client containers.',
-            availableEndpoints: ['/api/health']
+            availableEndpoints: ['/api/health', '/api/client-info']
         });
     });
 } else {
