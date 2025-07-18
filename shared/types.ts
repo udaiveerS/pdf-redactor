@@ -31,9 +31,7 @@ export interface HandshakeResponseMessage {
     missingEvents: EventNode[];
 }
 
-export interface WebSocketMessage {
-    type: MessageType;
-}
+
 
 export interface TaskNode {
     id: string;
