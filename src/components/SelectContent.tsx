@@ -52,11 +52,11 @@ export default function SelectContent() {
     >
       <MenuItem value="">
         <ListItemAvatar>
-          <Avatar alt="Project-Colab">
+          <Avatar alt="PDF Redactor">
             <DevicesRoundedIcon sx={{ fontSize: '1rem' }} />
           </Avatar>
         </ListItemAvatar>
-        <ListItemText primary="Project-Colab" secondary="Web app" />
+        <ListItemText primary="PDF Redactor" secondary="Web app" />
       </MenuItem>
     </Select>
   );

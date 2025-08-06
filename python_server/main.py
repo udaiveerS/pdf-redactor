@@ -104,16 +104,10 @@ async def server_status():
             "/api/run-tests"
         ],
         "capabilities": [
-            "PDF generation (PyMuPDF)",
-            "PDF parsing (PyMuPDF)",
-            "PDF redacting (PyMuPDF)", 
-            "ClickHouse database integration",
-            "File storage management",
-            "Background processing",
+            "PDF parsing & analysis",
             "PII detection (emails, SSNs)",
-            "Upload history tracking",
-            "Processing statistics",
-            "Test suite execution"
+            "File upload & storage",
+            "Processing status tracking"
         ]
     }
 

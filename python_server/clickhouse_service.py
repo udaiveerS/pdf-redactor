@@ -19,9 +19,9 @@ class ClickHouseService:
             self.client = clickhouse_connect.get_client(
                 host='localhost',
                 port=8123,
-                username='default',
-                password='',
-                database='default'
+                username='app',
+                password='secret',
+                database='pdf_scan'
             )
             logger.info("Connected to ClickHouse database")
         except Exception as e:
@@ -95,7 +95,7 @@ class ClickHouseService:
             return False
             
         try:
-            self.client.insert("pdf_uploads", [{
+            insert_data = {
                 'upload_id': result.upload_id,
                 'filename': result.filename,
                 'file_path': result.file_path,
@@ -109,13 +109,36 @@ class ClickHouseService:
                 'emails': result.emails,
                 'ssns': result.ssns,
                 'error_message': result.error_message
-            }])
+            }
+            
+            logger.info(f"Attempting to insert data: {insert_data}")
+            
+            # Convert to list of values in the correct order
+            values = [
+                insert_data['upload_id'],
+                insert_data['filename'],
+                insert_data['file_path'],
+                insert_data['file_size'],
+                insert_data['upload_date'],
+                insert_data['processing_date'],
+                insert_data['status'],
+                insert_data['pages_processed'],
+                insert_data['text_length'],
+                insert_data['processing_time'],
+                insert_data['emails'],
+                insert_data['ssns'],
+                insert_data['error_message']
+            ]
+            
+            self.client.insert("pdf_uploads", [values])
             
             logger.info(f"Stored upload result for {result.filename}")
             return True
             
         except Exception as e:
             logger.error(f"Failed to store upload result: {e}")
+            logger.error(f"Error type: {type(e)}")
+            logger.error(f"Error details: {str(e)}")
             return False
     
     def get_upload_history(self, limit: int = 50) -> List[UploadHistoryItem]:
@@ -125,7 +148,7 @@ class ClickHouseService:
             return []
             
         try:
-            query = """
+            query = f"""
                 SELECT 
                     upload_id,
                     filename,
@@ -138,10 +161,10 @@ class ClickHouseService:
                     processing_time
                 FROM pdf_uploads
                 ORDER BY upload_date DESC
-                LIMIT ?
+                LIMIT {limit}
             """
             
-            result = self.client.query(query, parameters=[limit])
+            result = self.client.query(query)
             
             history = []
             for row in result.result_rows:
@@ -170,16 +193,16 @@ class ClickHouseService:
             return None
             
         try:
-            query = """
+            query = f"""
                 SELECT 
                     upload_id, filename, file_path, file_size, upload_date,
                     processing_date, status, pages_processed, text_length,
                     processing_time, emails, ssns, error_message
                 FROM pdf_uploads
-                WHERE upload_id = ?
+                WHERE upload_id = '{upload_id}'
             """
             
-            result = self.client.query(query, parameters=[upload_id])
+            result = self.client.query(query)
             
             if result.result_rows:
                 row = result.result_rows[0]

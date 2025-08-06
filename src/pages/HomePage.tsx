@@ -16,7 +16,7 @@ const HomePage: React.FC = () => {
                     Dashboard
                 </Typography>
                 <Typography variant="body1" color="text.secondary">
-                    Welcome to Project-Colab
+                    Welcome to PDF Redactor
                 </Typography>
             </Box>
             

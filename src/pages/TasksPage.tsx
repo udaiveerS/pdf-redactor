@@ -57,7 +57,7 @@ const TasksPage: React.FC = () => {
                     Project List
                 </Typography>
                 <Typography variant="body1" color="text.secondary">
-                    Welcome to Project-Colab
+                    Welcome to PDF Redactor
                 </Typography>
             </Box>
             
