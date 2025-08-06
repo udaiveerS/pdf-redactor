@@ -4,7 +4,8 @@ import { Box } from '@mui/material';
 import AppNavbar from './components/AppNavbar';
 import SideMenu from './components/SideMenu';
 import HomePage from './pages/HomePage';
-import TasksPage from './pages/TasksPage';
+import PDFPage from './pages/PDFPage';
+import MetricsPage from './pages/MetricsPage';
 import AppTheme from './shared-theme/AppTheme';
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -34,9 +35,10 @@ const App: React.FC = () => {
     <Router>
       <AppLayout>
         <Routes>
-          <Route path="/" element={<Navigate to="/tasks" replace />} />
-          <Route path="/tasks" element={<TasksPage />} />
-          <Route path="*" element={<Navigate to="/tasks" replace />} />
+          <Route path="/" element={<Navigate to="/pdf" replace />} />
+          <Route path="/pdf" element={<PDFPage />} />
+          <Route path="/metrics" element={<MetricsPage />} />
+          <Route path="*" element={<Navigate to="/pdf" replace />} />
         </Routes>
       </AppLayout>
     </Router>

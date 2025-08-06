@@ -22,3 +22,13 @@ server/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# ClickHouse data and logs
+infra/clickhouse/data/
+infra/clickhouse/logs/
+
+# Python virtual environment
+python_server/venv/
+
+# Environment files
+.env

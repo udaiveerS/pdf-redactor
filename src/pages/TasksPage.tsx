@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import ProjectManagement from '../components/ProjectManagement';
 import Header from '../components/Header';
+import PythonServerStatus from '../components/PythonServerStatus';
 import { useClickOutside } from '../hooks/useClickOutside';
 
 const TasksPage: React.FC = () => {
@@ -61,6 +62,7 @@ const TasksPage: React.FC = () => {
             </Box>
             
             <Header />
+            <PythonServerStatus />
             <Box sx={{ mt: 3 }} ref={projectManagementRef}>
                 <ProjectManagement />
             </Box>

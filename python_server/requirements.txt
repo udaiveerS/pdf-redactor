@@ -1,0 +1,16 @@
+# Web framework
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+
+# Database
+clickhouse-connect>=0.8.0
+
+# PDF processing
+PyMuPDF>=1.23.0
+
+# Test generation
+PyYAML>=6.0
+
+# Additional utilities
+python-multipart>=0.0.6
+pydantic>=2.6.0 

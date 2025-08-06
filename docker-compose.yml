@@ -1,4 +1,27 @@
 services:
+  # ClickHouse Database
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse
+    environment:
+      CLICKHOUSE_DB: pdf_scan
+      CLICKHOUSE_USER: app
+      CLICKHOUSE_PASSWORD: secret
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports:
+      - "8123:8123" # HTTP API
+      - "9000:9000" # Native TCP driver
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - ./infra/clickhouse/data:/var/lib/clickhouse
+      - ./infra/clickhouse/logs:/var/log/clickhouse-server
+    restart: unless-stopped
+    networks:
+      - project-colab-network
+
   # Backend service - API and WebSocket only
   project-colab-backend:
     build:
@@ -10,9 +33,16 @@ services:
       - NODE_ENV=production
       - PORT=8080
       - BACKEND_ONLY=true
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=9000
+      - CLICKHOUSE_USER=app
+      - CLICKHOUSE_PASSWORD=secret
+      - CLICKHOUSE_DATABASE=pdf_scan
     restart: unless-stopped
     networks:
       - project-colab-network
+    depends_on:
+      - clickhouse
 
   # Single client service - React app
   project-colab-client:

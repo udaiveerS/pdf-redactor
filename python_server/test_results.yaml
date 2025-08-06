@@ -1,0 +1,236 @@
+total_tests: 12
+passed: 12
+failed: 0
+details:
+  clean-single-page.pdf:
+    status: PASSED
+    expected:
+      emails: []
+      ssns: []
+      status: SUCCESS
+    actual:
+      status: SUCCESS
+      emails: []
+      ssns: []
+      processing_time: 0.005259990692138672
+      text_length: 82
+      pages_processed: 1
+    passed: true
+    status_match: true
+    emails_match: true
+    ssns_match: true
+  simple-pii.pdf:
+    status: PASSED
+    expected:
+      emails:
+      - help@example.com
+      ssns:
+      - 123-45-6789
+      status: SUCCESS
+    actual:
+      status: SUCCESS
+      emails:
+      - help@example.com
+      ssns:
+      - 123-45-6789
+      processing_time: 0.0011868476867675781
+      text_length: 59
+      pages_processed: 1
+    passed: true
+    status_match: true
+    emails_match: true
+    ssns_match: true
+  multipage-pii.pdf:
+    status: PASSED
+    expected:
+      emails:
+      - bob@company.org
+      ssns:
+      - 987-65-4321
+      status: SUCCESS
+    actual:
+      status: SUCCESS
+      emails:
+      - bob@company.org
+      ssns:
+      - 987-65-4321
+      processing_time: 0.0021779537200927734
+      text_length: 501
+      pages_processed: 7
+    passed: true
+    status_match: true
+    emails_match: true
+    ssns_match: true
+  ssn-nodash.pdf:
+    status: PASSED
+    expected:
+      emails: []
+      ssns:
+      - '111223333'
+      status: SUCCESS
+    actual:
+      status: SUCCESS
+      emails: []
+      ssns:
+      - '111223333'
+      processing_time: 0.001178741455078125
+      text_length: 39
+      pages_processed: 1
+    passed: true
+    status_match: true
+    emails_match: true
+    ssns_match: true
+  email-edgecases.pdf:
+    status: PASSED
+    expected:
+      emails:
+      - first.last+alias@sub.domain.co.uk
+      ssns: []
+      status: SUCCESS
+    actual:
+      status: SUCCESS
+      emails:
+      - first.last+alias@sub.domain.co.uk
+      ssns: []
+      processing_time: 0.0011339187622070312
+      text_length: 55
+      pages_processed: 1
+    passed: true
+    status_match: true
+    emails_match: true
+    ssns_match: true
+  oversize-pii.pdf:
+    status: PASSED
+    expected:
+      emails:
+      - foo@bar.com
+      ssns: []
+      status: SUCCESS
+    actual:
+      status: SUCCESS
+      emails:
+      - foo@bar.com
+      ssns: []
+      processing_time: 0.014054059982299805
+      text_length: 8532
+      pages_processed: 100
+    passed: true
+    status_match: true
+    emails_match: true
+    ssns_match: true
+  corrupt.pdf:
+    status: PASSED
+    expected:
+      emails: []
+      ssns: []
+      status: FAILED
+    actual:
+      status: FAILED
+      emails: []
+      ssns: []
+      processing_time: 0.00016498565673828125
+      text_length: 0
+      pages_processed: 0
+    passed: true
+    status_match: true
+    emails_match: true
+    ssns_match: true
+  encrypted.pdf:
+    status: PASSED
+    expected:
+      emails: []
+      ssns: []
+      status: FAILED
+    actual:
+      status: FAILED
+      emails: []
+      ssns: []
+      processing_time: 0.022997140884399414
+      text_length: 0
+      pages_processed: 0
+    passed: true
+    status_match: true
+    emails_match: true
+    ssns_match: true
+  scanned-image.pdf:
+    status: PASSED
+    expected:
+      emails: []
+      ssns: []
+      status: SUCCESS
+    actual:
+      status: SUCCESS
+      emails: []
+      ssns: []
+      processing_time: 0.0015299320220947266
+      text_length: 33
+      pages_processed: 1
+    passed: true
+    status_match: true
+    emails_match: true
+    ssns_match: true
+  false-positive-bait.pdf:
+    status: PASSED
+    expected:
+      emails: []
+      ssns: []
+      status: SUCCESS
+    actual:
+      status: SUCCESS
+      emails: []
+      ssns: []
+      processing_time: 0.001528024673461914
+      text_length: 40
+      pages_processed: 1
+    passed: true
+    status_match: true
+    emails_match: true
+    ssns_match: true
+  multi-pii.pdf:
+    status: PASSED
+    expected:
+      emails:
+      - john.doe@company.com
+      - jane.smith@example.org
+      ssns:
+      - 555-12-3456
+      - 987-65-4321
+      status: SUCCESS
+    actual:
+      status: SUCCESS
+      emails:
+      - john.doe@company.com
+      - jane.smith@example.org
+      ssns:
+      - 987-65-4321
+      - 555-12-3456
+      processing_time: 0.001474142074584961
+      text_length: 126
+      pages_processed: 4
+    passed: true
+    status_match: true
+    emails_match: true
+    ssns_match: true
+  complex-email.pdf:
+    status: PASSED
+    expected:
+      emails:
+      - test@domain.com
+      - user+tag@subdomain.org
+      - admin@company.co.uk
+      ssns: []
+      status: SUCCESS
+    actual:
+      status: SUCCESS
+      emails:
+      - test@domain.com
+      - user+tag@subdomain.org
+      - admin@company.co.uk
+      ssns: []
+      processing_time: 0.001603841781616211
+      text_length: 77
+      pages_processed: 1
+    passed: true
+    status_match: true
+    emails_match: true
+    ssns_match: true

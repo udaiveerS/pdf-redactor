@@ -1,0 +1,62 @@
+clean-single-page.pdf:
+  emails: []
+  ssns: []
+  status: SUCCESS
+simple-pii.pdf:
+  emails:
+  - help@example.com
+  ssns:
+  - 123-45-6789
+  status: SUCCESS
+multipage-pii.pdf:
+  emails:
+  - bob@company.org
+  ssns:
+  - 987-65-4321
+  status: SUCCESS
+ssn-nodash.pdf:
+  emails: []
+  ssns:
+  - '111223333'
+  status: SUCCESS
+email-edgecases.pdf:
+  emails:
+  - first.last+alias@sub.domain.co.uk
+  ssns: []
+  status: SUCCESS
+oversize-pii.pdf:
+  emails:
+  - foo@bar.com
+  ssns: []
+  status: SUCCESS
+corrupt.pdf:
+  emails: []
+  ssns: []
+  status: FAILED
+encrypted.pdf:
+  emails: []
+  ssns: []
+  status: FAILED
+scanned-image.pdf:
+  emails: []
+  ssns: []
+  status: SUCCESS
+false-positive-bait.pdf:
+  emails: []
+  ssns: []
+  status: SUCCESS
+multi-pii.pdf:
+  emails:
+  - john.doe@company.com
+  - jane.smith@example.org
+  ssns:
+  - 555-12-3456
+  - 987-65-4321
+  status: SUCCESS
+complex-email.pdf:
+  emails:
+  - test@domain.com
+  - user+tag@subdomain.org
+  - admin@company.co.uk
+  ssns: []
+  status: SUCCESS

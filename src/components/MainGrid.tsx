@@ -48,16 +48,25 @@ const data: StatCardProps[] = [
 export default function MainGrid() {
   return (
     <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
-      {/* cards */}
-      <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
-        Overview
-      </Typography>
-      <Grid
-        container
-        spacing={2}
-        columns={12}
-        sx={{ mb: (theme) => theme.spacing(2) }}
-      >
+      {/* Analytics Overview Section */}
+      <Box sx={{ 
+        mt: 4, 
+        mb: 4, 
+        p: 3, 
+        borderRadius: 2, 
+        background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
+        border: '1px solid #dee2e6',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      }}>
+        <Typography component="h2" variant="h6" sx={{ mb: 3, fontWeight: 'bold', color: 'text.primary' }}>
+          📊 Analytics Overview
+        </Typography>
+        <Grid
+          container
+          spacing={2}
+          columns={12}
+          sx={{ mb: (theme) => theme.spacing(2) }}
+        >
         {data.map((card, index) => (
           <Grid key={index} size={{ xs: 12, sm: 6, lg: 3 }}>
             <StatCard {...card} />
@@ -72,7 +81,7 @@ export default function MainGrid() {
         <Grid size={{ xs: 12, md: 6 }}>
           <PageViewsBarChart />
         </Grid>
-      </Grid>
+      </Box>
       <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
         Details
       </Typography>

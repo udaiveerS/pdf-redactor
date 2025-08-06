@@ -20,10 +20,21 @@ export default function NavbarBreadcrumbs() {
   const location = useLocation();
   
   const getBreadcrumbItems = () => {
-    // All routes now go to tasks/projects
+    const path = location.pathname;
+    if (path === '/pdf') {
+      return [
+        { text: 'PDF Redactor', isActive: false },
+        { text: 'Upload & Process', isActive: true }
+      ];
+    } else if (path === '/metrics') {
+      return [
+        { text: 'PDF Redactor', isActive: false },
+        { text: 'Analytics', isActive: true }
+      ];
+    }
     return [
-      { text: 'Dashboard', isActive: false },
-      { text: 'Projects', isActive: true }
+      { text: 'PDF Redactor', isActive: false },
+      { text: 'Dashboard', isActive: true }
     ];
   };
 

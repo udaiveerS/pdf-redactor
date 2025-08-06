@@ -9,13 +9,15 @@ import Stack from '@mui/material/Stack';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded';
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded';
-import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 import HelpRoundedIcon from '@mui/icons-material/HelpRounded';
 
 const mainListItems = [
-  { text: 'Projects', icon: <AssignmentRoundedIcon />, path: '/tasks' },
+  { text: 'PDF Redactor', icon: <PictureAsPdfIcon />, path: '/pdf' },
+  { text: 'Metrics', icon: <AnalyticsIcon />, path: '/metrics' },
 ];
 
 const secondaryListItems = [
