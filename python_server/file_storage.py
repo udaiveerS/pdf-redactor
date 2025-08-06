@@ -39,6 +39,13 @@ class FileStorageService:
         """Get the full path to a stored file"""
         return str(self.upload_dir / upload_id / filename)
     
+    def get_redacted_file_path(self, upload_id: str, original_filename: str) -> str:
+        """Get the path for a redacted version of a file"""
+        # Create redacted filename
+        name, ext = os.path.splitext(original_filename)
+        redacted_filename = f"{name}_redacted{ext}"
+        return str(self.upload_dir / upload_id / redacted_filename)
+    
     def file_exists(self, upload_id: str, filename: str) -> bool:
         """Check if a file exists in storage"""
         file_path = self.upload_dir / upload_id / filename

@@ -32,3 +32,5 @@ python_server/venv/
 
 # Environment files
 .env
+python_server/uploads/
+python_server/__pycache__/

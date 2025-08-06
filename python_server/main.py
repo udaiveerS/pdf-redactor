@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks, Response
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -10,7 +11,8 @@ from typing import List, Optional
 from datetime import datetime
 import time
 from pdf_parser import pdf_parser
-from models import PDFProcessingResult, UploadHistoryItem, ProcessingStatus
+from pdf_redactor import pdf_redactor, PIIMatch, RedactionType
+from models import PDFProcessingResult, UploadHistoryItem, ProcessingStatus, PIILocation, RedactionResult
 from clickhouse_service import clickhouse_service
 from file_storage import file_storage
 
@@ -65,6 +67,10 @@ class PDFProcessingResponse(BaseModel):
     pages_processed: int
     processing_time: float
     error: Optional[str] = None
+    # Redaction fields
+    redaction_applied: Optional[bool] = None
+    redacted_file_available: Optional[bool] = None
+    total_redactions: Optional[int] = None
 
 class UploadHistoryResponse(BaseModel):
     uploads: List[UploadHistoryItem]
@@ -83,6 +89,7 @@ class FindingsResponse(BaseModel):
     total_pii_items: int
     success_rate: float
     avg_processing_time: float
+    p95_processing_time: float
     pii_types: dict
     processing_trends: list
     recent_uploads: list
@@ -131,17 +138,56 @@ async def server_status():
     }
 
 async def process_pdf_background(upload_id: str, file_path: str, filename: str, file_size: int):
-    """Background task to process PDF and store results"""
+    """Background task to process PDF and store results with redaction"""
     logger.info(f"Starting background processing for {filename}")
     
     try:
-        # Update status to processing
-        # (In a real implementation, you'd update this in ClickHouse)
-        
-        # Parse the PDF
+        # Parse the PDF for basic PII detection
         start_time = time.time()
         parse_result = pdf_parser.parse_pdf(Path(file_path))
         processing_time = time.time() - start_time
+        
+        # Enhanced PII detection with coordinates for redaction
+        redaction_start_time = time.time()
+        pii_matches, detection_metadata = pdf_redactor.detect_pii_with_coordinates(Path(file_path))
+        redaction_time = time.time() - redaction_start_time
+        
+        # Convert PII matches to PIILocation objects
+        pii_locations = []
+        for match in pii_matches:
+            pii_locations.append(PIILocation(
+                text=match.text,
+                type=match.type,
+                page_number=match.page_number,
+                x0=match.bbox.x0,
+                y0=match.bbox.y0,
+                x1=match.bbox.x1,
+                y1=match.bbox.y1,
+                confidence=match.confidence,
+                context=match.context
+            ))
+        
+        # Create redacted PDF if PII is detected
+        redaction_result = None
+        if pii_matches:
+            redacted_file_path = file_storage.get_redacted_file_path(upload_id, filename)
+            redaction_success = pdf_redactor.redact_pdf(
+                Path(file_path), 
+                Path(redacted_file_path), 
+                pii_matches
+            )
+            
+            if redaction_success:
+                redaction_summary = pdf_redactor.get_redaction_summary(pii_matches)
+                redaction_result = RedactionResult(
+                    upload_id=upload_id,
+                    original_file_path=file_path,
+                    redacted_file_path=redacted_file_path,
+                    redaction_summary=redaction_summary,
+                    pii_locations=pii_locations,
+                    redaction_applied=True,
+                    redaction_time=redaction_time
+                )
         
         # Create processing result
         processing_result = PDFProcessingResult(
@@ -157,13 +203,15 @@ async def process_pdf_background(upload_id: str, file_path: str, filename: str, 
             processing_time=processing_time,
             emails=parse_result.get("emails", []),
             ssns=parse_result.get("ssns", []),
-            error_message=parse_result.get("error")
+            error_message=parse_result.get("error"),
+            redaction_result=redaction_result,
+            pii_locations=pii_locations
         )
         
         # Store in ClickHouse
         clickhouse_service.store_upload_result(processing_result)
         
-        logger.info(f"Background processing complete for {filename}")
+        logger.info(f"Background processing complete for {filename} - {len(pii_matches)} PII items detected")
         
     except Exception as e:
         logger.error(f"Background processing failed for {filename}: {e}")
@@ -240,7 +288,10 @@ async def get_upload_status(upload_id: str):
         text_length=result.text_length,
         pages_processed=result.pages_processed,
         processing_time=result.processing_time,
-        error=result.error_message
+        error=result.error_message,
+        redaction_applied=result.redaction_result is not None if result.redaction_result else None,
+        redacted_file_available=result.redaction_result.redacted_file_path is not None if result.redaction_result else None,
+        total_redactions=result.redaction_result.redaction_summary.get('total_redactions', 0) if result.redaction_result else None
     )
 
 @app.get("/api/upload-history", response_model=UploadHistoryResponse)
@@ -253,38 +304,7 @@ async def get_upload_history(limit: int = 50):
         total_count=len(uploads)
     )
 
-@app.get("/api/download-pdf/{upload_id}")
-async def download_pdf(upload_id: str):
-    """Download the original PDF file"""
-    try:
-        # Get upload info from ClickHouse
-        result = clickhouse_service.get_upload_by_id(upload_id)
-        if not result:
-            raise HTTPException(status_code=404, detail="Upload not found")
-        
-        # Check if file exists
-        if not file_storage.file_exists(upload_id, result.filename):
-            raise HTTPException(status_code=404, detail="File not found")
-        
-        # Get file path
-        file_path = file_storage.get_file_path(upload_id, result.filename)
-        
-        # Read file content
-        with open(file_path, 'rb') as f:
-            file_content = f.read()
-        
-        # Return file as download
-        return Response(
-            content=file_content,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": f"attachment; filename={result.filename}"
-            }
-        )
-        
-    except Exception as e:
-        logger.error(f"Download failed for {upload_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
+
 
 @app.get("/api/statistics", response_model=StatisticsResponse)
 async def get_statistics():
@@ -299,6 +319,96 @@ async def get_findings():
     logger.info("Findings requested")
     findings = clickhouse_service.get_findings()
     return FindingsResponse(**findings)
+
+@app.get("/api/download-pdf/{upload_id}")
+async def download_pdf(upload_id: str):
+    """Download a processed PDF file"""
+    logger.info(f"PDF download requested for upload_id: {upload_id}")
+    
+    try:
+        # Get upload details from ClickHouse
+        upload_result = clickhouse_service.get_upload_by_id(upload_id)
+        if not upload_result:
+            raise HTTPException(status_code=404, detail="Upload not found")
+        
+        # Check if file exists
+        file_path = Path(upload_result.file_path)
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="PDF file not found")
+        
+        # Return the file
+        return FileResponse(
+            path=str(file_path),
+            filename=upload_result.filename,
+            media_type='application/pdf'
+        )
+        
+    except Exception as e:
+        logger.error(f"Download failed for upload_id {upload_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
+
+@app.get("/api/download-redacted-pdf/{upload_id}")
+async def download_redacted_pdf(upload_id: str):
+    """Download redacted PDF file"""
+    logger.info(f"Redacted PDF download requested for upload_id: {upload_id}")
+    
+    try:
+        # Get upload details from ClickHouse
+        upload_result = clickhouse_service.get_upload_by_id(upload_id)
+        if not upload_result:
+            raise HTTPException(status_code=404, detail="Upload not found")
+        
+        # Check if redacted file exists
+        redacted_file_path = file_storage.get_redacted_file_path(upload_id, upload_result.filename)
+        if not Path(redacted_file_path).exists():
+            raise HTTPException(status_code=404, detail="Redacted PDF file not found")
+        
+        # Create redacted filename
+        name, ext = os.path.splitext(upload_result.filename)
+        redacted_filename = f"{name}_redacted{ext}"
+        
+        # Return the redacted file
+        return FileResponse(
+            path=redacted_file_path,
+            filename=redacted_filename,
+            media_type='application/pdf'
+        )
+        
+    except Exception as e:
+        logger.error(f"Redacted download failed for upload_id {upload_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Redacted download failed: {str(e)}")
+
+@app.get("/api/redaction-details/{upload_id}")
+async def get_redaction_details(upload_id: str):
+    """Get detailed redaction information for an upload"""
+    logger.info(f"Redaction details requested for upload_id: {upload_id}")
+    
+    try:
+        # Get upload details from ClickHouse
+        upload_result = clickhouse_service.get_upload_by_id(upload_id)
+        if not upload_result:
+            raise HTTPException(status_code=404, detail="Upload not found")
+        
+        # Check if redaction was applied
+        if not upload_result.redaction_result:
+            return {
+                "upload_id": upload_id,
+                "redaction_applied": False,
+                "message": "No redaction was applied to this file"
+            }
+        
+        return {
+            "upload_id": upload_id,
+            "redaction_applied": True,
+            "redaction_summary": upload_result.redaction_result.redaction_summary,
+            "pii_locations": [loc.dict() for loc in upload_result.pii_locations],
+            "redaction_time": upload_result.redaction_result.redaction_time,
+            "total_redactions": len(upload_result.pii_locations)
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get redaction details for upload_id {upload_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get redaction details: {str(e)}")
 
 @app.post("/api/run-tests", response_model=TestResultResponse)
 async def run_tests():

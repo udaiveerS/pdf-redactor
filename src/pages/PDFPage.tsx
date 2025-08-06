@@ -30,6 +30,7 @@ import UploadIcon from '@mui/icons-material/Upload';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
+import SecurityIcon from '@mui/icons-material/Security';
 import Header from '../components/Header';
 
 interface ServerStatus {
@@ -51,7 +52,7 @@ interface PDFUpload {
     id: string;
     filename: string;
     uploadDate: string;
-    status: 'processing' | 'completed' | 'failed';
+    status: 'processing' | 'complete' | 'completed' | 'failed';
     size: string;
     pages: number;
     extractedText?: string;
@@ -59,6 +60,10 @@ interface PDFUpload {
     ssns?: string[];
     processingTime?: number;
     textLength?: number;
+    // Redaction fields
+    redactionApplied?: boolean;
+    redactedFileAvailable?: boolean;
+    totalRedactions?: number;
 }
 
 const PDFPage: React.FC = () => {
@@ -112,17 +117,24 @@ const PDFPage: React.FC = () => {
                 const data = await response.json();
                 console.log('Upload history data:', data);
                 
-                const uploads: PDFUpload[] = data.uploads.map((upload: any) => ({
-                    id: upload.upload_id,
-                    filename: upload.filename,
-                    uploadDate: upload.upload_date,
-                    status: upload.status,
-                    size: formatFileSize(upload.file_size),
-                    pages: upload.pages_processed,
-                    emails: upload.emails || [], // Use actual masked emails from backend
-                    ssns: upload.ssns || [], // Use actual masked SSNs from backend
-                    processingTime: upload.processing_time
-                }));
+                const uploads: PDFUpload[] = data.uploads.map((upload: any) => {
+                    const mappedUpload = {
+                        id: upload.upload_id,
+                        filename: upload.filename,
+                        uploadDate: upload.upload_date,
+                        status: upload.status,
+                        size: formatFileSize(upload.file_size),
+                        pages: upload.pages_processed,
+                        emails: upload.emails || [], // Use actual masked emails from backend
+                        ssns: upload.ssns || [], // Use actual masked SSNs from backend
+                        processingTime: upload.processing_time,
+                        redactionApplied: upload.redaction_applied || false,
+                        redactedFileAvailable: upload.redacted_file_available || false,
+                        totalRedactions: upload.total_redactions || 0
+                    };
+                    console.log('Mapped upload:', mappedUpload);
+                    return mappedUpload;
+                });
                 setPdfUploads(uploads);
             } else {
                 console.error('Failed to fetch upload history:', response.status);
@@ -149,7 +161,8 @@ const PDFPage: React.FC = () => {
 
     const getUploadStatusColor = (status: PDFUpload['status']) => {
         switch (status) {
-            case 'completed': return 'success';
+            case 'complete': return 'success';
+            case 'completed': return 'success'; // Keep for backward compatibility
             case 'processing': return 'warning';
             case 'failed': return 'error';
             default: return 'default';
@@ -229,7 +242,11 @@ const PDFPage: React.FC = () => {
                                 pages: result.pages_processed,
                                 emails: result.emails,
                                 ssns: result.ssns,
-                                processingTime: result.processing_time
+                                processingTime: result.processing_time,
+                                // Update redaction status
+                                redactionApplied: result.redaction_applied || false,
+                                redactedFileAvailable: result.redacted_file_available || false,
+                                totalRedactions: result.total_redactions || 0
                             }
                             : upload
                     ));
@@ -294,6 +311,29 @@ const PDFPage: React.FC = () => {
             }
         } catch (err) {
             console.error('Download error:', err);
+        }
+    };
+
+    const handleDownloadRedactedPDF = async (uploadId: string, filename: string) => {
+        try {
+            const response = await fetch(`http://localhost:8080/api/download-redacted-pdf/${uploadId}`);
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                // Create redacted filename
+                const name = filename.replace('.pdf', '');
+                a.download = `${name}_redacted.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else {
+                console.error('Redacted download failed:', response.status);
+            }
+        } catch (err) {
+            console.error('Redacted download error:', err);
         }
     };
 
@@ -485,9 +525,22 @@ const PDFPage: React.FC = () => {
                                         <Typography variant="body2" color="text.secondary">
                                             Size: {upload.size} • Pages: {upload.pages > 0 ? upload.pages : 'Processing...'}
                                         </Typography>
-                                        {upload.status === 'completed' && (
+                                        {(upload.status === 'complete' || upload.status === 'completed') && (
                                             <Typography variant="body2" color="text.secondary">
                                                 Emails: {upload.emails?.length || 0} • SSNs: {upload.ssns?.length || 0} (Masked)
+                                                {upload.redactionApplied && (
+                                                    <span> • Redactions: {upload.totalRedactions}</span>
+                                                )}
+                                                {upload.redactedFileAvailable && (
+                                                    <Chip 
+                                                        label="Redacted Available" 
+                                                        size="small" 
+                                                        color="success" 
+                                                        variant="outlined"
+                                                        icon={<SecurityIcon />}
+                                                        sx={{ ml: 1, fontSize: '0.7rem' }}
+                                                    />
+                                                )}
                                             </Typography>
                                         )}
                                     </Box>
@@ -506,17 +559,43 @@ const PDFPage: React.FC = () => {
                                         >
                                             <DeleteIcon />
                                         </IconButton>
-                                        {upload.status === 'completed' && (
-                                            <IconButton 
-                                                size="small"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDownloadPDF(upload.id, upload.filename);
-                                                }}
-                                                title="Download PDF"
-                                            >
-                                                <DownloadIcon />
-                                            </IconButton>
+                                        {(upload.status === 'complete' || upload.status === 'completed') && (
+                                            <>
+                                                <IconButton 
+                                                    size="small"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDownloadPDF(upload.id, upload.filename);
+                                                    }}
+                                                    title="Download Original PDF"
+                                                    sx={{ color: 'black' }}
+                                                >
+                                                    <DownloadIcon />
+                                                </IconButton>
+                                                {upload.redactedFileAvailable && (
+                                                    <IconButton 
+                                                        size="small"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDownloadRedactedPDF(upload.id, upload.filename);
+                                                        }}
+                                                        title="Download Redacted PDF (PII Removed)"
+                                                        sx={{ 
+                                                            color: 'success.main',
+                                                            backgroundColor: 'success.light',
+                                                            border: '2px solid',
+                                                            borderColor: 'success.main',
+                                                            '&:hover': {
+                                                                backgroundColor: 'success.main',
+                                                                color: 'white',
+                                                                borderColor: 'success.dark'
+                                                            }
+                                                        }}
+                                                    >
+                                                        <SecurityIcon />
+                                                    </IconButton>
+                                                )}
+                                            </>
                                         )}
                                     </Box>
                                 </ListItem>
@@ -659,6 +738,52 @@ const PDFPage: React.FC = () => {
                     )}
                 </DialogContent>
                 <DialogActions>
+                    {(selectedUpload?.status === 'complete' || selectedUpload?.status === 'completed') && (
+                        <>
+                            <Button 
+                                startIcon={<DownloadIcon />}
+                                onClick={() => {
+                                    if (selectedUpload) {
+                                        handleDownloadPDF(selectedUpload.id, selectedUpload.filename);
+                                    }
+                                }}
+                                variant="outlined"
+                                sx={{ 
+                                    color: 'black',
+                                    borderColor: 'black',
+                                    '&:hover': {
+                                        borderColor: 'black',
+                                        backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                                    }
+                                }}
+                            >
+                                Download Original
+                            </Button>
+                            {selectedUpload?.redactedFileAvailable && (
+                                <Button 
+                                    startIcon={<SecurityIcon />}
+                                    onClick={() => {
+                                        if (selectedUpload) {
+                                            handleDownloadRedactedPDF(selectedUpload.id, selectedUpload.filename);
+                                        }
+                                    }}
+                                    variant="contained"
+                                    sx={{
+                                        backgroundColor: 'success.main',
+                                        color: 'white',
+                                        border: '2px solid',
+                                        borderColor: 'success.main',
+                                        '&:hover': {
+                                            backgroundColor: 'success.dark',
+                                            borderColor: 'success.dark'
+                                        }
+                                    }}
+                                >
+                                    Download Redacted (Secure)
+                                </Button>
+                            )}
+                        </>
+                    )}
                     <Button onClick={handleCloseSummary}>Close</Button>
                 </DialogActions>
             </Dialog>

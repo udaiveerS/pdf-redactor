@@ -10,8 +10,12 @@ import {
     CardHeader,
     Divider,
     CircularProgress,
-    Alert
+    Alert,
+    IconButton,
+    Chip
 } from '@mui/material';
+import DownloadIcon from '@mui/icons-material/Download';
+import SecurityIcon from '@mui/icons-material/Security';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import Header from '../components/Header';
 
@@ -20,6 +24,7 @@ interface FindingsData {
     total_pii_items: number;
     success_rate: number;
     avg_processing_time: number;
+    p95_processing_time: number;
     pii_types: {
         emails: number;
         ssns: number;
@@ -30,6 +35,7 @@ interface FindingsData {
         avg_time: number;
     }>;
     recent_uploads: Array<{
+        upload_id: string;
         filename: string;
         upload_date: string;
         status: string;
@@ -57,6 +63,50 @@ const MetricsPage: React.FC = () => {
             setError(err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Failed to fetch analytics data');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDownloadPDF = async (uploadId: string, filename: string) => {
+        try {
+            const response = await fetch(`http://localhost:8080/api/download-pdf/${uploadId}`);
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else {
+                console.error('Download failed:', response.status);
+            }
+        } catch (err) {
+            console.error('Download error:', err);
+        }
+    };
+
+    const handleDownloadRedactedPDF = async (uploadId: string, filename: string) => {
+        try {
+            const response = await fetch(`http://localhost:8080/api/download-redacted-pdf/${uploadId}`);
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                // Create redacted filename
+                const name = filename.replace('.pdf', '');
+                a.download = `${name}_redacted.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else {
+                console.error('Redacted download failed:', response.status);
+            }
+        } catch (err) {
+            console.error('Redacted download error:', err);
         }
     };
 
@@ -135,7 +185,7 @@ const MetricsPage: React.FC = () => {
                 
                 {/* Summary Cards */}
                 <Grid container spacing={3} sx={{ mb: 4, mt: 2 }}>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={12} sm={6} lg={2.4}>
                     <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
                         <CardContent>
                             <Typography color="rgba(255,255,255,0.8)" gutterBottom>
@@ -150,7 +200,7 @@ const MetricsPage: React.FC = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={12} sm={6} lg={2.4}>
                     <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}>
                         <CardContent>
                             <Typography color="rgba(255,255,255,0.8)" gutterBottom>
@@ -165,7 +215,7 @@ const MetricsPage: React.FC = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={12} sm={6} lg={2.4}>
                     <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}>
                         <CardContent>
                             <Typography color="rgba(255,255,255,0.8)" gutterBottom>
@@ -180,7 +230,7 @@ const MetricsPage: React.FC = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={12} sm={6} lg={2.4}>
                     <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}>
                         <CardContent>
                             <Typography color="rgba(255,255,255,0.8)" gutterBottom>
@@ -191,6 +241,21 @@ const MetricsPage: React.FC = () => {
                             </Typography>
                             <Typography variant="body2" color="rgba(255,255,255,0.8)">
                                 Detected & flagged
+                            </Typography>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} lg={2.4}>
+                    <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', color: 'white' }}>
+                        <CardContent>
+                            <Typography color="rgba(255,255,255,0.8)" gutterBottom>
+                                P95 Processing Time
+                            </Typography>
+                            <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                                {findings.p95_processing_time}s
+                            </Typography>
+                            <Typography variant="body2" color="rgba(255,255,255,0.8)">
+                                95th percentile
                             </Typography>
                         </CardContent>
                     </Card>
@@ -296,16 +361,63 @@ const MetricsPage: React.FC = () => {
                                                             {new Date(upload.upload_date).toLocaleString()}
                                                         </Typography>
                                                     </Box>
-                                                    <Box sx={{ textAlign: 'right' }}>
-                                                        <Typography variant="body2" color="text.secondary">
-                                                            Status: {upload.status}
-                                                        </Typography>
-                                                        <Typography variant="body2" color="text.secondary">
-                                                            Emails: {upload.email_count} • SSNs: {upload.ssn_count}
-                                                        </Typography>
-                                                        <Typography variant="body2" color="text.secondary">
-                                                            Time: {upload.processing_time.toFixed(3)}s
-                                                        </Typography>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                        <Box sx={{ textAlign: 'right' }}>
+                                                            <Typography variant="body2" color="text.secondary">
+                                                                Status: {upload.status}
+                                                            </Typography>
+                                                            <Typography variant="body2" color="text.secondary">
+                                                                Emails: {upload.email_count} • SSNs: {upload.ssn_count}
+                                                                {upload.redaction_applied && (
+                                                                    <span> • Redactions: {upload.total_redactions}</span>
+                                                                )}
+                                                                {upload.redacted_file_available && (
+                                                                    <Chip 
+                                                                        label="Redacted" 
+                                                                        size="small" 
+                                                                        color="success" 
+                                                                        variant="outlined"
+                                                                        icon={<SecurityIcon />}
+                                                                        sx={{ ml: 1, fontSize: '0.6rem' }}
+                                                                    />
+                                                                )}
+                                                            </Typography>
+                                                            <Typography variant="body2" color="text.secondary">
+                                                                Time: {upload.processing_time.toFixed(3)}s
+                                                            </Typography>
+                                                        </Box>
+                                                        {(upload.status === 'complete' || upload.status === 'completed') && (
+                                                            <>
+                                                                <IconButton 
+                                                                    size="small"
+                                                                    onClick={() => handleDownloadPDF(upload.upload_id, upload.filename)}
+                                                                    title="Download Original PDF"
+                                                                    sx={{ color: 'black' }}
+                                                                >
+                                                                    <DownloadIcon />
+                                                                </IconButton>
+                                                                {upload.redacted_file_available && (
+                                                                    <IconButton 
+                                                                        size="small"
+                                                                        onClick={() => handleDownloadRedactedPDF(upload.upload_id, upload.filename)}
+                                                                        title="Download Redacted PDF (PII Removed)"
+                                                                        sx={{ 
+                                                                            color: 'success.main',
+                                                                            backgroundColor: 'success.light',
+                                                                            border: '2px solid',
+                                                                            borderColor: 'success.main',
+                                                                            '&:hover': {
+                                                                                backgroundColor: 'success.main',
+                                                                                color: 'white',
+                                                                                borderColor: 'success.dark'
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        <SecurityIcon />
+                                                                    </IconButton>
+                                                                )}
+                                                            </>
+                                                        )}
                                                     </Box>
                                                 </Box>
                                             </Paper>

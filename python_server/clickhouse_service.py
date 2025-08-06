@@ -2,7 +2,7 @@ import clickhouse_connect
 import logging
 from datetime import datetime
 from typing import List, Optional
-from models import PDFProcessingResult, UploadHistoryItem, ProcessingStatus
+from models import PDFProcessingResult, UploadHistoryItem, ProcessingStatus, RedactionResult
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,15 @@ class ClickHouseService:
             return
             
         try:
-            # Create PDF uploads table
+            # Drop existing table if it exists (to update schema)
+            try:
+                self.client.command("DROP TABLE IF EXISTS pdf_uploads")
+                self.client.command("DROP TABLE IF EXISTS email_index")
+                self.client.command("DROP TABLE IF EXISTS ssn_index")
+            except Exception as e:
+                logger.warning(f"Could not drop existing tables: {e}")
+            
+            # Create PDF uploads table with redaction fields
             self.client.command("""
                 CREATE TABLE IF NOT EXISTS pdf_uploads (
                     upload_id String,
@@ -50,7 +58,11 @@ class ClickHouseService:
                     processing_time Float32,
                     emails Array(String),
                     ssns Array(String),
-                    error_message Nullable(String)
+                    error_message Nullable(String),
+                    redaction_applied UInt8 DEFAULT 0,
+                    redacted_file_available UInt8 DEFAULT 0,
+                    total_redactions UInt32 DEFAULT 0,
+                    redacted_file_path Nullable(String)
                 ) ENGINE = MergeTree()
                 ORDER BY (upload_id, upload_date)
             """)
@@ -95,6 +107,18 @@ class ClickHouseService:
             return False
             
         try:
+            # Prepare redaction data
+            redaction_applied = 0
+            redacted_file_available = 0
+            total_redactions = 0
+            redacted_file_path = None
+            
+            if result.redaction_result:
+                redaction_applied = 1
+                redacted_file_available = 1 if result.redaction_result.redacted_file_path else 0
+                total_redactions = result.redaction_result.redaction_summary.get('total_redactions', 0)
+                redacted_file_path = result.redaction_result.redacted_file_path
+            
             insert_data = {
                 'upload_id': result.upload_id,
                 'filename': result.filename,
@@ -108,7 +132,11 @@ class ClickHouseService:
                 'processing_time': result.processing_time,
                 'emails': result.emails,
                 'ssns': result.ssns,
-                'error_message': result.error_message
+                'error_message': result.error_message,
+                'redaction_applied': redaction_applied,
+                'redacted_file_available': redacted_file_available,
+                'total_redactions': total_redactions,
+                'redacted_file_path': redacted_file_path
             }
             
             logger.info(f"Attempting to insert data: {insert_data}")
@@ -127,7 +155,11 @@ class ClickHouseService:
                 insert_data['processing_time'],
                 insert_data['emails'],
                 insert_data['ssns'],
-                insert_data['error_message']
+                insert_data['error_message'],
+                insert_data['redaction_applied'],
+                insert_data['redacted_file_available'],
+                insert_data['total_redactions'],
+                insert_data['redacted_file_path']
             ]
             
             self.client.insert("pdf_uploads", [values])
@@ -160,7 +192,10 @@ class ClickHouseService:
                     length(ssns) as ssn_count,
                     processing_time,
                     emails,
-                    ssns
+                    ssns,
+                    redaction_applied,
+                    redacted_file_available,
+                    total_redactions
                 FROM pdf_uploads
                 ORDER BY upload_date DESC
                 LIMIT {limit}
@@ -185,7 +220,10 @@ class ClickHouseService:
                     processing_time=row[8],
                     is_clean=(row[6] == 0 and row[7] == 0),
                     emails=mask_pii_list(row[9] or []),
-                    ssns=mask_pii_list(row[10] or [])
+                    ssns=mask_pii_list(row[10] or []),
+                    redaction_applied=bool(row[11]),
+                    redacted_file_available=bool(row[12]),
+                    total_redactions=row[13]
                 ))
             
             return history
@@ -204,7 +242,9 @@ class ClickHouseService:
                 SELECT 
                     upload_id, filename, file_path, file_size, upload_date,
                     processing_date, status, pages_processed, text_length,
-                    processing_time, emails, ssns, error_message
+                    processing_time, emails, ssns, error_message,
+                    redaction_applied, redacted_file_available, total_redactions,
+                    redacted_file_path
                 FROM pdf_uploads
                 WHERE upload_id = '{upload_id}'
             """
@@ -213,6 +253,22 @@ class ClickHouseService:
             
             if result.result_rows:
                 row = result.result_rows[0]
+                # Create redaction result if redaction was applied
+                redaction_result = None
+                if row[13]:  # redaction_applied
+                    redaction_result = RedactionResult(
+                        upload_id=row[0],
+                        original_file_path=row[2],
+                        redacted_file_path=row[16],  # redacted_file_path
+                        redaction_summary={
+                            'total_redactions': row[15] or 0,  # total_redactions
+                            'redactions_by_type': {}  # We'll need to get this from the full data
+                        },
+                        pii_locations=[],  # We'll need to get this from the full data
+                        redaction_applied=True,
+                        redaction_time=None
+                    )
+                
                 return PDFProcessingResult(
                     upload_id=row[0],
                     filename=row[1],
@@ -226,7 +282,9 @@ class ClickHouseService:
                     processing_time=row[9],
                     emails=row[10],
                     ssns=row[11],
-                    error_message=row[12]
+                    error_message=row[12],
+                    redaction_result=redaction_result,
+                    pii_locations=[]
                 )
             
             return None
@@ -263,13 +321,17 @@ class ClickHouseService:
             result = self.client.query(query)
             row = result.result_rows[0]
             
+            # Handle NaN values from ClickHouse aggregations
+            avg_processing_time_raw = row[5]
+            avg_processing_time = 0.0 if avg_processing_time_raw is None or str(avg_processing_time_raw) == 'nan' else float(avg_processing_time_raw)
+            
             return {
                 "total_uploads": row[0],
                 "clean_pdfs": row[1],
                 "pii_pdfs": row[2],
                 "total_emails": row[3],
                 "total_ssns": row[4],
-                "avg_processing_time": float(row[5]) if row[5] else 0.0
+                "avg_processing_time": avg_processing_time
             }
             
         except Exception as e:
@@ -291,6 +353,7 @@ class ClickHouseService:
                 "total_pii_items": 0,
                 "success_rate": 0.0,
                 "avg_processing_time": 0.0,
+                "p95_processing_time": 0.0,
                 "pii_types": {"emails": 0, "ssns": 0},
                 "processing_trends": [],
                 "recent_uploads": []
@@ -309,15 +372,31 @@ class ClickHouseService:
                 FROM pdf_uploads
             """
             
+            # Get P95 processing time
+            p95_query = """
+                SELECT 
+                    quantile(0.95)(processing_time) as p95_processing_time
+                FROM pdf_uploads
+                WHERE processing_time > 0
+            """
+            
             result = self.client.query(metrics_query)
             row = result.result_rows[0]
             
             total_pdfs = row[0] or 0
             total_pii_items = row[1] or 0
             successful_uploads = row[2] or 0
-            avg_processing_time = float(row[3] or 0)
+            # Handle NaN values from ClickHouse aggregations
+            avg_processing_time_raw = row[3]
+            avg_processing_time = 0.0 if avg_processing_time_raw is None or str(avg_processing_time_raw) == 'nan' else float(avg_processing_time_raw)
+            
             total_emails = row[4] or 0
             total_ssns = row[5] or 0
+            
+            # Get P95 processing time
+            p95_result = self.client.query(p95_query)
+            p95_raw = p95_result.result_rows[0][0]
+            p95_processing_time = 0.0 if p95_raw is None or str(p95_raw) == 'nan' else float(p95_raw)
             
             # Calculate success rate
             success_rate = (successful_uploads / total_pdfs * 100) if total_pdfs > 0 else 0
@@ -325,6 +404,7 @@ class ClickHouseService:
             # Get recent uploads (last 10)
             recent_query = """
                 SELECT 
+                    upload_id,
                     filename,
                     upload_date,
                     status,
@@ -339,13 +419,17 @@ class ClickHouseService:
             recent_result = self.client.query(recent_query)
             recent_uploads = []
             for row in recent_result.result_rows:
+                processing_time_raw = row[6]
+                processing_time = 0.0 if processing_time_raw is None or str(processing_time_raw) == 'nan' else float(processing_time_raw)
+                
                 recent_uploads.append({
-                    "filename": row[0],
-                    "upload_date": row[1].isoformat() if row[1] else None,
-                    "status": row[2],
-                    "email_count": row[3] or 0,
-                    "ssn_count": row[4] or 0,
-                    "processing_time": float(row[5] or 0)
+                    "upload_id": row[0],
+                    "filename": row[1],
+                    "upload_date": row[2].isoformat() if row[2] else None,
+                    "status": row[3],
+                    "email_count": row[4] or 0,
+                    "ssn_count": row[5] or 0,
+                    "processing_time": processing_time
                 })
             
             # Get processing trends (last 7 days)
@@ -363,10 +447,13 @@ class ClickHouseService:
             trends_result = self.client.query(trends_query)
             processing_trends = []
             for row in trends_result.result_rows:
+                avg_time_raw = row[2]
+                avg_time = 0.0 if avg_time_raw is None or str(avg_time_raw) == 'nan' else float(avg_time_raw)
+                
                 processing_trends.append({
                     "date": row[0].isoformat() if row[0] else None,
                     "uploads": row[1] or 0,
-                    "avg_time": float(row[2] or 0)
+                    "avg_time": avg_time
                 })
             
             return {
@@ -374,6 +461,7 @@ class ClickHouseService:
                 "total_pii_items": total_pii_items,
                 "success_rate": round(success_rate, 1),
                 "avg_processing_time": round(avg_processing_time, 3),
+                "p95_processing_time": round(p95_processing_time, 3),
                 "pii_types": {
                     "emails": total_emails,
                     "ssns": total_ssns
@@ -389,6 +477,7 @@ class ClickHouseService:
                 "total_pii_items": 0,
                 "success_rate": 0.0,
                 "avg_processing_time": 0.0,
+                "p95_processing_time": 0.0,
                 "pii_types": {"emails": 0, "ssns": 0},
                 "processing_trends": [],
                 "recent_uploads": []
