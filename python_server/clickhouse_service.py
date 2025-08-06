@@ -158,7 +158,9 @@ class ClickHouseService:
                     pages_processed,
                     length(emails) as email_count,
                     length(ssns) as ssn_count,
-                    processing_time
+                    processing_time,
+                    emails,
+                    ssns
                 FROM pdf_uploads
                 ORDER BY upload_date DESC
                 LIMIT {limit}
@@ -168,6 +170,9 @@ class ClickHouseService:
             
             history = []
             for row in result.result_rows:
+                # Import masking functions
+                from main import mask_pii_list
+                
                 history.append(UploadHistoryItem(
                     upload_id=row[0],
                     filename=row[1],
@@ -178,7 +183,9 @@ class ClickHouseService:
                     email_count=row[6],
                     ssn_count=row[7],
                     processing_time=row[8],
-                    is_clean=(row[6] == 0 and row[7] == 0)
+                    is_clean=(row[6] == 0 and row[7] == 0),
+                    emails=mask_pii_list(row[9] or []),
+                    ssns=mask_pii_list(row[10] or [])
                 ))
             
             return history

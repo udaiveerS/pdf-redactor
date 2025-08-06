@@ -40,4 +40,6 @@ class UploadHistoryItem(BaseModel):
     email_count: int
     ssn_count: int
     processing_time: float
-    is_clean: bool  # True if no PII detected 
+    is_clean: bool  # True if no PII detected
+    emails: List[str] = []  # Masked email addresses
+    ssns: List[str] = []    # Masked SSNs 

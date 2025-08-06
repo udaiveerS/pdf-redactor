@@ -112,8 +112,6 @@ const PDFPage: React.FC = () => {
                 const data = await response.json();
                 console.log('Upload history data:', data);
                 
-                // For now, we'll use the counts from the backend
-                // In a real implementation, you'd fetch the actual emails/SSNs for each upload
                 const uploads: PDFUpload[] = data.uploads.map((upload: any) => ({
                     id: upload.upload_id,
                     filename: upload.filename,
@@ -121,8 +119,8 @@ const PDFPage: React.FC = () => {
                     status: upload.status,
                     size: formatFileSize(upload.file_size),
                     pages: upload.pages_processed,
-                    emails: upload.email_count > 0 ? Array(upload.email_count).fill('email@example.com') : [], // Placeholder
-                    ssns: upload.ssn_count > 0 ? Array(upload.ssn_count).fill('123-45-6789') : [], // Placeholder
+                    emails: upload.emails || [], // Use actual masked emails from backend
+                    ssns: upload.ssns || [], // Use actual masked SSNs from backend
                     processingTime: upload.processing_time
                 }));
                 setPdfUploads(uploads);
