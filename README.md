@@ -2,6 +2,28 @@
 
 A PDF processing application that detects Personally Identifiable Information (PII) and provides analytics using ClickHouse for high-performance data processing.
 
+## Data Flow
+
+```mermaid
+graph LR
+    A[PDF Upload] --> B[React Frontend]
+    B --> C[FastAPI Backend]
+    C --> D[PDF Parser]
+    D --> E[PII Detection]
+    E --> F[ClickHouse DB]
+    F --> G[Analytics Dashboard]
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style C fill:#e8f5e8
+    style D fill:#fff3e0
+    style E fill:#fce4ec
+    style F fill:#e0f2f1
+    style G fill:#f1f8e9
+```
+
+**Flow**: User uploads PDF → Frontend sends to Backend → PDF parsed → PII detected → Stored in DB → Analytics displayed
+
 ## Design Choices
 
 ### Why ClickHouse?
