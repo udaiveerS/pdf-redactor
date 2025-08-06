@@ -4,25 +4,43 @@ A PDF processing application that detects Personally Identifiable Information (P
 
 ## Data Flow
 
-```mermaid
-graph LR
-    A[PDF Upload] --> B[React Frontend]
-    B --> C[FastAPI Backend]
-    C --> D[PDF Parser]
-    D --> E[PII Detection]
-    E --> F[ClickHouse DB]
-    F --> G[Analytics Dashboard]
-    
-    style A fill:#e1f5fe
-    style B fill:#f3e5f5
-    style C fill:#e8f5e8
-    style D fill:#fff3e0
-    style E fill:#fce4ec
-    style F fill:#e0f2f1
-    style G fill:#f1f8e9
 ```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   PDF Upload    │───▶│  React Frontend  │───▶│ FastAPI Backend │
+│   (Port 3000)   │    │   (Port 3000)    │    │   (Port 8080)   │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                                         │
+                                                         ▼
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│ Analytics       │◀───│  ClickHouse DB   │◀───│  PII Detection  │
+│ Dashboard       │    │   (Port 8123)    │    │   (Regex/ML)    │
+│ (Real-time)     │    │                  │    │                 │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                                         ▲
+                                                         │
+                                              ┌─────────────────┐
+                                              │  PDF Parser     │
+                                              │  (PyMuPDF)      │
+                                              └─────────────────┘
 
-**Flow**: User uploads PDF → Frontend sends to Backend → PDF parsed → PII detected → Stored in DB → Analytics displayed
+Data Flow Steps:
+1. User uploads PDF via React frontend (Port 3000)
+2. Frontend sends file to FastAPI backend (Port 8080)
+3. Backend stores PDF in file system with UUID
+4. PDF Parser extracts text using PyMuPDF
+5. PII Detection scans for emails, SSNs using regex patterns
+6. Results stored in ClickHouse database (Port 8123)
+7. Analytics dashboard queries ClickHouse for real-time metrics
+8. Frontend displays processing results and analytics
+
+Key Components:
+• React Frontend: File upload UI, analytics dashboard
+• FastAPI Backend: REST API, background processing
+• PDF Parser: Text extraction using PyMuPDF
+• PII Detection: Regex-based email/SSN detection
+• ClickHouse: Analytics database with materialized views
+• File Storage: Local filesystem organized by upload ID
+```
 
 ## Design Choices
 
