@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -17,6 +17,16 @@ from file_storage import file_storage
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def mask_pii_data(data: str) -> str:
+    """Mask PII data by showing only the first character and replacing the rest with asterisks"""
+    if not data or len(data) <= 1:
+        return data
+    return data[0] + '*' * (len(data) - 1)
+
+def mask_pii_list(data_list: List[str]) -> List[str]:
+    """Mask a list of PII data items"""
+    return [mask_pii_data(item) for item in data_list]
 
 # Create FastAPI app
 app = FastAPI(
@@ -67,6 +77,15 @@ class StatisticsResponse(BaseModel):
     total_emails: int
     total_ssns: int
     avg_processing_time: float
+
+class FindingsResponse(BaseModel):
+    total_pdfs_processed: int
+    total_pii_items: int
+    success_rate: float
+    avg_processing_time: float
+    pii_types: dict
+    processing_trends: list
+    recent_uploads: list
 
 class TestResultResponse(BaseModel):
     total_tests: int
@@ -216,8 +235,8 @@ async def get_upload_status(upload_id: str):
     return PDFProcessingResponse(
         upload_id=result.upload_id,
         status=result.status.value,
-        emails=result.emails,
-        ssns=result.ssns,
+        emails=mask_pii_list(result.emails),
+        ssns=mask_pii_list(result.ssns),
         text_length=result.text_length,
         pages_processed=result.pages_processed,
         processing_time=result.processing_time,
@@ -234,12 +253,52 @@ async def get_upload_history(limit: int = 50):
         total_count=len(uploads)
     )
 
+@app.get("/api/download-pdf/{upload_id}")
+async def download_pdf(upload_id: str):
+    """Download the original PDF file"""
+    try:
+        # Get upload info from ClickHouse
+        result = clickhouse_service.get_upload_by_id(upload_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Upload not found")
+        
+        # Check if file exists
+        if not file_storage.file_exists(upload_id, result.filename):
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Get file path
+        file_path = file_storage.get_file_path(upload_id, result.filename)
+        
+        # Read file content
+        with open(file_path, 'rb') as f:
+            file_content = f.read()
+        
+        # Return file as download
+        return Response(
+            content=file_content,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={result.filename}"
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Download failed for {upload_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
+
 @app.get("/api/statistics", response_model=StatisticsResponse)
 async def get_statistics():
     """Get processing statistics from ClickHouse"""
     stats = clickhouse_service.get_statistics()
     
     return StatisticsResponse(**stats)
+
+@app.get("/api/findings", response_model=FindingsResponse)
+async def get_findings():
+    """Get findings and analytics data for metrics page"""
+    logger.info("Findings requested")
+    findings = clickhouse_service.get_findings()
+    return FindingsResponse(**findings)
 
 @app.post("/api/run-tests", response_model=TestResultResponse)
 async def run_tests():

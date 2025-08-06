@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     Box, 
     Typography, 
@@ -8,53 +8,103 @@ import {
     Card,
     CardContent,
     CardHeader,
-    Divider
+    Divider,
+    CircularProgress,
+    Alert
 } from '@mui/material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import Header from '../components/Header';
 
-// Sample data for charts
-const weeklyProcessingData = [
-    { week: 'Week 1', totalPDFs: 45, withPII: 12, withoutPII: 33 },
-    { week: 'Week 2', totalPDFs: 67, withPII: 18, withoutPII: 49 },
-    { week: 'Week 3', totalPDFs: 89, withPII: 23, withoutPII: 66 },
-    { week: 'Week 4', totalPDFs: 123, withPII: 34, withoutPII: 89 },
-    { week: 'Week 5', totalPDFs: 156, withPII: 42, withoutPII: 114 },
-    { week: 'Week 6', totalPDFs: 189, withPII: 51, withoutPII: 138 },
-];
-
-const piiTypeData = [
-    { name: 'Email Addresses', value: 234, color: '#8884d8' },
-    { name: 'Social Security Numbers', value: 89, color: '#82ca9d' },
-    { name: 'Credit Card Numbers', value: 45, color: '#ffc658' },
-    { name: 'Phone Numbers', value: 156, color: '#ff7300' },
-    { name: 'Addresses', value: 78, color: '#00C49F' },
-];
-
-const processingTimeData = [
-    { day: 'Mon', avgTime: 2.3, p99Time: 8.7 },
-    { day: 'Tue', avgTime: 2.1, p99Time: 7.9 },
-    { day: 'Wed', avgTime: 2.8, p99Time: 9.2 },
-    { day: 'Thu', avgTime: 2.5, p99Time: 8.1 },
-    { day: 'Fri', avgTime: 2.9, p99Time: 9.8 },
-    { day: 'Sat', avgTime: 1.8, p99Time: 6.5 },
-    { day: 'Sun', avgTime: 1.6, p99Time: 5.9 },
-];
-
-const dailyVolumeData = [
-    { day: 'Mon', processed: 45, failed: 2 },
-    { day: 'Tue', processed: 52, failed: 1 },
-    { day: 'Wed', processed: 38, failed: 3 },
-    { day: 'Thu', processed: 67, failed: 2 },
-    { day: 'Fri', processed: 89, failed: 4 },
-    { day: 'Sat', processed: 23, failed: 1 },
-    { day: 'Sun', processed: 18, failed: 0 },
-];
+interface FindingsData {
+    total_pdfs_processed: number;
+    total_pii_items: number;
+    success_rate: number;
+    avg_processing_time: number;
+    pii_types: {
+        emails: number;
+        ssns: number;
+    };
+    processing_trends: Array<{
+        date: string;
+        uploads: number;
+        avg_time: number;
+    }>;
+    recent_uploads: Array<{
+        filename: string;
+        upload_date: string;
+        status: string;
+        email_count: number;
+        ssn_count: number;
+        processing_time: number;
+    }>;
+}
 
 const MetricsPage: React.FC = () => {
-    const totalPDFs = weeklyProcessingData.reduce((sum, week) => sum + week.totalPDFs, 0);
-    const totalWithPII = weeklyProcessingData.reduce((sum, week) => sum + week.withPII, 0);
-    const piiPercentage = ((totalWithPII / totalPDFs) * 100).toFixed(1);
+    const [findings, setFindings] = useState<FindingsData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchFindings = async () => {
+        try {
+            const response = await fetch('http://localhost:8080/api/findings');
+            if (response.ok) {
+                const data = await response.json();
+                setFindings(data);
+            } else {
+                throw new Error('Failed to fetch findings');
+            }
+        } catch (err) {
+            setError(err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Failed to fetch analytics data');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchFindings();
+    }, []);
+
+    if (loading) {
+        return (
+            <Container maxWidth="lg" sx={{ mt: 2, mb: 4 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                    <CircularProgress />
+                </Box>
+            </Container>
+        );
+    }
+
+    if (error) {
+        return (
+            <Container maxWidth="lg" sx={{ mt: 2, mb: 4 }}>
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    {error}
+                </Alert>
+            </Container>
+        );
+    }
+
+    if (!findings) {
+        return (
+            <Container maxWidth="lg" sx={{ mt: 2, mb: 4 }}>
+                <Alert severity="info">
+                    No analytics data available
+                </Alert>
+            </Container>
+        );
+    }
+
+    // Prepare chart data from real findings
+    const piiTypeData = [
+        { name: 'Email Addresses', value: findings.pii_types.emails, color: '#8884d8' },
+        { name: 'Social Security Numbers', value: findings.pii_types.ssns, color: '#82ca9d' },
+    ];
+
+    const processingTimeData = findings.processing_trends.map(trend => ({
+        day: new Date(trend.date).toLocaleDateString('en-US', { weekday: 'short' }),
+        avgTime: trend.avg_time,
+        uploads: trend.uploads
+    }));
 
     return (
         <Container maxWidth="lg" sx={{ mt: 2, mb: 4 }}>
@@ -92,10 +142,10 @@ const MetricsPage: React.FC = () => {
                                 Total PDFs Processed
                             </Typography>
                             <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                                {totalPDFs.toLocaleString()}
+                                {findings.total_pdfs_processed.toLocaleString()}
                             </Typography>
                             <Typography variant="body2" color="rgba(255,255,255,0.8)">
-                                Last 6 weeks
+                                All time
                             </Typography>
                         </CardContent>
                     </Card>
@@ -104,13 +154,13 @@ const MetricsPage: React.FC = () => {
                     <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}>
                         <CardContent>
                             <Typography color="rgba(255,255,255,0.8)" gutterBottom>
-                                PDFs with PII
+                                Success Rate
                             </Typography>
                             <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                                {totalWithPII.toLocaleString()}
+                                {findings.success_rate}%
                             </Typography>
                             <Typography variant="body2" color="rgba(255,255,255,0.8)">
-                                {piiPercentage}% of total
+                                Processing success
                             </Typography>
                         </CardContent>
                     </Card>
@@ -122,10 +172,10 @@ const MetricsPage: React.FC = () => {
                                 Avg Processing Time
                             </Typography>
                             <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                                2.3s
+                                {findings.avg_processing_time}s
                             </Typography>
                             <Typography variant="body2" color="rgba(255,255,255,0.8)">
-                                Per document
+                                Per PDF
                             </Typography>
                         </CardContent>
                     </Card>
@@ -134,47 +184,18 @@ const MetricsPage: React.FC = () => {
                     <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}>
                         <CardContent>
                             <Typography color="rgba(255,255,255,0.8)" gutterBottom>
-                                P99 Processing Time
-                            </Typography>
-                            <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                                8.7s
-                            </Typography>
-                            <Typography variant="body2" color="rgba(255,255,255,0.8)">
-                                99th percentile
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                    <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', color: 'white' }}>
-                        <CardContent>
-                            <Typography color="rgba(255,255,255,0.8)" gutterBottom>
-                                Success Rate
-                            </Typography>
-                            <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                                97.2%
-                            </Typography>
-                            <Typography variant="body2" color="rgba(255,255,255,0.8)">
-                                Processing success
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                    <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', color: 'text.primary' }}>
-                        <CardContent>
-                            <Typography color="text.secondary" gutterBottom>
                                 Total PII Items
                             </Typography>
                             <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                                602
+                                {findings.total_pii_items}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                Sensitive data found
+                            <Typography variant="body2" color="rgba(255,255,255,0.8)">
+                                Detected & flagged
                             </Typography>
                         </CardContent>
                     </Card>
                 </Grid>
+
                 </Grid>
             </Box>
 
@@ -185,41 +206,21 @@ const MetricsPage: React.FC = () => {
                 </Typography>
                 
                 <Grid container spacing={3}>
-                    {/* Weekly Processing Volume */}
+                    {/* PII Types Distribution */}
                     <Grid item xs={12}>
                         <Paper sx={{ p: 3, height: '100%', boxShadow: 3 }}>
-                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                📈 Weekly PDF Processing Volume
+                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 2, letterSpacing: '0.2em' }}>
+                                🎯   PII   Types   Detected
                             </Typography>
-                            <ResponsiveContainer width="100%" height={350}>
-                                <BarChart data={weeklyProcessingData}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="week" />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Bar dataKey="withPII" fill="#ff6b6b" name="With PII" />
-                                    <Bar dataKey="withoutPII" fill="#4ecdc4" name="Without PII" />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </Paper>
-                    </Grid>
-
-                    {/* PII Types Distribution */}
-                    <Grid item xs={12} md={6} lg={4}>
-                        <Paper sx={{ p: 3, height: '100%', boxShadow: 3 }}>
-                            <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
-                                🎯 PII Types Detected in Documents
-                            </Typography>
-                            <ResponsiveContainer width="100%" height={300}>
+                            <ResponsiveContainer width="100%" height={400}>
                                 <PieChart>
                                     <Pie
                                         data={piiTypeData}
                                         cx="50%"
                                         cy="50%"
                                         labelLine={false}
-                                        label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
-                                        outerRadius={80}
+                                        label={({ name, percent }) => `${name}\n${(percent * 100).toFixed(0)}%`}
+                                        outerRadius={150}
                                         fill="#8884d8"
                                         dataKey="value"
                                     >
@@ -230,46 +231,88 @@ const MetricsPage: React.FC = () => {
                                     <Tooltip formatter={(value, name) => [value, name]} />
                                 </PieChart>
                             </ResponsiveContainer>
+                            
+                            {/* Colored Legend */}
+                            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: 3, flexWrap: 'wrap' }}>
+                                {piiTypeData.map((entry, index) => (
+                                    <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Box 
+                                            sx={{ 
+                                                width: 16, 
+                                                height: 16, 
+                                                borderRadius: '50%', 
+                                                backgroundColor: entry.color,
+                                                border: '2px solid #fff',
+                                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                            }} 
+                                        />
+                                        <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                                            {entry.name} ({entry.value})
+                                        </Typography>
+                                    </Box>
+                                ))}
+                            </Box>
                         </Paper>
                     </Grid>
 
                     {/* Processing Time Trends */}
-                    <Grid item xs={12} lg={6}>
+                    <Grid item xs={12} md={8}>
                         <Paper sx={{ p: 3, height: '100%', boxShadow: 3 }}>
                             <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                ⏱️ Processing Time Trends (P99 vs Average)
+                                ⏱️ Processing Time Trends
                             </Typography>
-                            <ResponsiveContainer width="100%" height={350}>
-                                <LineChart data={processingTimeData}>
+                            <ResponsiveContainer width="100%" height={400}>
+                                <BarChart data={processingTimeData}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis dataKey="day" />
-                                    <YAxis />
+                                    <YAxis yAxisId="left" />
+                                    <YAxis yAxisId="right" orientation="right" />
                                     <Tooltip />
                                     <Legend />
-                                    <Line type="monotone" dataKey="avgTime" stroke="#8884d8" name="Average Time (s)" strokeWidth={3} />
-                                    <Line type="monotone" dataKey="p99Time" stroke="#82ca9d" name="P99 Time (s)" strokeWidth={3} />
-                                </LineChart>
+                                    <Bar yAxisId="left" dataKey="avgTime" fill="#8884d8" name="Average Time (s)" />
+                                    <Bar yAxisId="right" dataKey="uploads" fill="#82ca9d" name="Upload Count" />
+                                </BarChart>
                             </ResponsiveContainer>
                         </Paper>
                     </Grid>
 
-                    {/* Daily Volume */}
-                    <Grid item xs={12} lg={6}>
+                    {/* Recent Uploads Table */}
+                    <Grid item xs={12}>
                         <Paper sx={{ p: 3, height: '100%', boxShadow: 3 }}>
                             <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                📅 Daily Processing Volume
+                                📋 Recent Uploads
                             </Typography>
-                            <ResponsiveContainer width="100%" height={350}>
-                                <BarChart data={dailyVolumeData}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="day" />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Bar dataKey="processed" fill="#4ecdc4" name="Processed" />
-                                    <Bar dataKey="failed" fill="#ff6b6b" name="Failed" />
-                                </BarChart>
-                            </ResponsiveContainer>
+                            <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
+                                <Grid container spacing={2}>
+                                    {findings.recent_uploads.map((upload, index) => (
+                                        <Grid item xs={12} key={index}>
+                                            <Paper sx={{ p: 2, backgroundColor: 'background.default' }}>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <Box>
+                                                        <Typography variant="body1" fontWeight="medium">
+                                                            {upload.filename}
+                                                        </Typography>
+                                                        <Typography variant="body2" color="text.secondary">
+                                                            {new Date(upload.upload_date).toLocaleString()}
+                                                        </Typography>
+                                                    </Box>
+                                                    <Box sx={{ textAlign: 'right' }}>
+                                                        <Typography variant="body2" color="text.secondary">
+                                                            Status: {upload.status}
+                                                        </Typography>
+                                                        <Typography variant="body2" color="text.secondary">
+                                                            Emails: {upload.email_count} • SSNs: {upload.ssn_count}
+                                                        </Typography>
+                                                        <Typography variant="body2" color="text.secondary">
+                                                            Time: {upload.processing_time.toFixed(3)}s
+                                                        </Typography>
+                                                    </Box>
+                                                </Box>
+                                            </Paper>
+                                        </Grid>
+                                    ))}
+                                </Grid>
+                            </Box>
                         </Paper>
                     </Grid>
                 </Grid>

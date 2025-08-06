@@ -276,5 +276,116 @@ class ClickHouseService:
                 "avg_processing_time": 0.0
             }
 
+    def get_findings(self) -> dict:
+        """Get findings and analytics data for metrics page"""
+        if not self.client:
+            return {
+                "total_pdfs_processed": 0,
+                "total_pii_items": 0,
+                "success_rate": 0.0,
+                "avg_processing_time": 0.0,
+                "pii_types": {"emails": 0, "ssns": 0},
+                "processing_trends": [],
+                "recent_uploads": []
+            }
+            
+        try:
+            # Get basic metrics
+            metrics_query = """
+                SELECT 
+                    COUNT(*) as total_pdfs,
+                    SUM(length(emails) + length(ssns)) as total_pii_items,
+                    COUNT(CASE WHEN status = 'complete' THEN 1 END) as successful_uploads,
+                    AVG(processing_time) as avg_processing_time,
+                    SUM(length(emails)) as total_emails,
+                    SUM(length(ssns)) as total_ssns
+                FROM pdf_uploads
+            """
+            
+            result = self.client.query(metrics_query)
+            row = result.result_rows[0]
+            
+            total_pdfs = row[0] or 0
+            total_pii_items = row[1] or 0
+            successful_uploads = row[2] or 0
+            avg_processing_time = float(row[3] or 0)
+            total_emails = row[4] or 0
+            total_ssns = row[5] or 0
+            
+            # Calculate success rate
+            success_rate = (successful_uploads / total_pdfs * 100) if total_pdfs > 0 else 0
+            
+            # Get recent uploads (last 10)
+            recent_query = """
+                SELECT 
+                    filename,
+                    upload_date,
+                    status,
+                    length(emails) as email_count,
+                    length(ssns) as ssn_count,
+                    processing_time
+                FROM pdf_uploads
+                ORDER BY upload_date DESC
+                LIMIT 10
+            """
+            
+            recent_result = self.client.query(recent_query)
+            recent_uploads = []
+            for row in recent_result.result_rows:
+                recent_uploads.append({
+                    "filename": row[0],
+                    "upload_date": row[1].isoformat() if row[1] else None,
+                    "status": row[2],
+                    "email_count": row[3] or 0,
+                    "ssn_count": row[4] or 0,
+                    "processing_time": float(row[5] or 0)
+                })
+            
+            # Get processing trends (last 7 days)
+            trends_query = """
+                SELECT 
+                    toDate(upload_date) as date,
+                    COUNT(*) as uploads,
+                    AVG(processing_time) as avg_time
+                FROM pdf_uploads
+                WHERE upload_date >= now() - INTERVAL 7 DAY
+                GROUP BY toDate(upload_date)
+                ORDER BY date DESC
+            """
+            
+            trends_result = self.client.query(trends_query)
+            processing_trends = []
+            for row in trends_result.result_rows:
+                processing_trends.append({
+                    "date": row[0].isoformat() if row[0] else None,
+                    "uploads": row[1] or 0,
+                    "avg_time": float(row[2] or 0)
+                })
+            
+            return {
+                "total_pdfs_processed": total_pdfs,
+                "total_pii_items": total_pii_items,
+                "success_rate": round(success_rate, 1),
+                "avg_processing_time": round(avg_processing_time, 3),
+                "pii_types": {
+                    "emails": total_emails,
+                    "ssns": total_ssns
+                },
+                "processing_trends": processing_trends,
+                "recent_uploads": recent_uploads
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get findings: {e}")
+            return {
+                "total_pdfs_processed": 0,
+                "total_pii_items": 0,
+                "success_rate": 0.0,
+                "avg_processing_time": 0.0,
+                "pii_types": {"emails": 0, "ssns": 0},
+                "processing_trends": [],
+                "recent_uploads": []
+            }
+
 # Global ClickHouse service instance
 clickhouse_service = ClickHouseService() 

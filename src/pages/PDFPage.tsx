@@ -278,6 +278,27 @@ const PDFPage: React.FC = () => {
         setSelectedUpload(null);
     };
 
+    const handleDownloadPDF = async (uploadId: string, filename: string) => {
+        try {
+            const response = await fetch(`http://localhost:8080/api/download-pdf/${uploadId}`);
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else {
+                console.error('Download failed:', response.status);
+            }
+        } catch (err) {
+            console.error('Download error:', err);
+        }
+    };
+
     return (
         <Container maxWidth="lg" sx={{ mt: 2, mb: 4 }}>
             <Box sx={{ mb: 3 }}>
@@ -468,7 +489,7 @@ const PDFPage: React.FC = () => {
                                         </Typography>
                                         {upload.status === 'completed' && (
                                             <Typography variant="body2" color="text.secondary">
-                                                Emails: {upload.emails?.length || 0} • SSNs: {upload.ssns?.length || 0}
+                                                Emails: {upload.emails?.length || 0} • SSNs: {upload.ssns?.length || 0} (Masked)
                                             </Typography>
                                         )}
                                     </Box>
@@ -490,7 +511,11 @@ const PDFPage: React.FC = () => {
                                         {upload.status === 'completed' && (
                                             <IconButton 
                                                 size="small"
-                                                onClick={(e) => e.stopPropagation()}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDownloadPDF(upload.id, upload.filename);
+                                                }}
+                                                title="Download PDF"
                                             >
                                                 <DownloadIcon />
                                             </IconButton>
@@ -584,11 +609,17 @@ const PDFPage: React.FC = () => {
                             {selectedUpload.emails && selectedUpload.emails.length > 0 && (
                                 <Box sx={{ mb: 3 }}>
                                     <Typography variant="h6" gutterBottom>
-                                        Detected Emails
+                                        Detected Emails (Masked for Privacy)
                                     </Typography>
                                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                                         {selectedUpload.emails.map((email, index) => (
-                                            <Chip key={index} label={email} size="small" />
+                                            <Chip 
+                                                key={index} 
+                                                label={email} 
+                                                size="small" 
+                                                color="warning"
+                                                title="PII data is masked for privacy"
+                                            />
                                         ))}
                                     </Box>
                                 </Box>
@@ -597,11 +628,17 @@ const PDFPage: React.FC = () => {
                             {selectedUpload.ssns && selectedUpload.ssns.length > 0 && (
                                 <Box sx={{ mb: 3 }}>
                                     <Typography variant="h6" gutterBottom>
-                                        Detected SSNs
+                                        Detected SSNs (Masked for Privacy)
                                     </Typography>
                                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                                         {selectedUpload.ssns.map((ssn, index) => (
-                                            <Chip key={index} label={ssn} size="small" color="error" />
+                                            <Chip 
+                                                key={index} 
+                                                label={ssn} 
+                                                size="small" 
+                                                color="error" 
+                                                title="PII data is masked for privacy"
+                                            />
                                         ))}
                                     </Box>
                                 </Box>
