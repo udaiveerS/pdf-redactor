@@ -14,7 +14,7 @@ A PDF processing application that detects Personally Identifiable Information (P
 - **Python FastAPI backend**: High-performance async API for PDF processing
 - **React frontend**: Modern UI with Material-UI for analytics visualization
 - **Docker deployment**: Consistent environment across development and production
-- **Separation of concerns**: PDF processing, analytics storage, and UI are independent services
+- **Integrated workflow**: PDF processing, analytics storage, and UI work together as a cohesive system
 
 ## Quick Start
 
@@ -54,6 +54,76 @@ pdf-redactor/
 └── setup-clickhouse.sh     # Database initialization
 ```
 
+## API Endpoints
+
+### PDF Processing
+- `POST /upload` - Upload and process PDF file
+- `GET /files` - List all processed files
+- `GET /files/{file_id}` - Get specific file details and PII data
+- `DELETE /files/{file_id}` - Delete processed file
+
+### Analytics & Metrics
+- `GET /analytics/stats` - Get overall processing statistics
+- `GET /analytics/pii-types` - Get PII type distribution
+- `GET /analytics/processing-times` - Get processing time trends
+- `GET /analytics/success-rate` - Get success/failure rates
+
+### Health & Monitoring
+- `GET /health` - Server health status
+- `GET /health/database` - Database connection status
+- `GET /metrics` - Prometheus-style metrics endpoint
+
+## Testing Strategy
+
+### Backend Testing
+```bash
+# Run PDF processing tests
+cd python_server
+python -m pytest tests/
+
+# Test PII detection accuracy
+python test_generator.py
+python test_runner.py
+
+# Test ClickHouse integration
+python test-clickhouse.py
+```
+
+### Frontend Testing
+```bash
+# Run React component tests
+npm test
+
+# Run integration tests
+npm run test:integration
+```
+
+### Test Coverage
+- **Unit Tests**: PDF parsing, PII detection algorithms
+- **Integration Tests**: API endpoints, database operations
+- **End-to-End Tests**: Complete PDF upload and processing workflow
+- **Performance Tests**: Processing time and database query performance
+
+## Metrics Collection
+
+### Processing Metrics
+- **Total PDFs processed**: Count of all uploaded documents
+- **Processing time**: Average and P99 processing durations
+- **Success rate**: Percentage of successful processing attempts
+- **File size distribution**: Statistics on uploaded file sizes
+
+### PII Detection Metrics
+- **Detection accuracy**: True positive/negative rates
+- **PII type frequency**: Most common types of detected data
+- **False positives**: Incorrect PII detections
+- **Processing errors**: Failed detection attempts
+
+### System Metrics
+- **Database performance**: Query response times
+- **API response times**: Endpoint latency statistics
+- **Error rates**: Failed requests and exceptions
+- **Resource utilization**: CPU, memory, and disk usage
+
 ## Key Features
 
 ### PII Detection
@@ -88,12 +158,6 @@ SELECT doc_id, scanned_at, email, source_path
 FROM scan_results
 ARRAY JOIN emails AS email;
 ```
-
-## API Endpoints
-
-- `POST /upload` - Upload and process PDF
-- `GET /files` - List processed files
-- `GET /analytics/stats` - Get processing statistics
 
 ## Performance
 
