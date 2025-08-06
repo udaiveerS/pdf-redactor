@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -7,7 +7,12 @@ import tempfile
 import os
 from pathlib import Path
 from typing import List, Optional
+from datetime import datetime
+import time
 from pdf_parser import pdf_parser
+from models import PDFProcessingResult, UploadHistoryItem, ProcessingStatus
+from clickhouse_service import clickhouse_service
+from file_storage import file_storage
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -36,7 +41,13 @@ class HealthResponse(BaseModel):
     server: str
     version: str
 
-class PDFParseResponse(BaseModel):
+class PDFUploadResponse(BaseModel):
+    upload_id: str
+    status: str
+    message: str
+
+class PDFProcessingResponse(BaseModel):
+    upload_id: str
     status: str
     emails: List[str]
     ssns: List[str]
@@ -44,6 +55,18 @@ class PDFParseResponse(BaseModel):
     pages_processed: int
     processing_time: float
     error: Optional[str] = None
+
+class UploadHistoryResponse(BaseModel):
+    uploads: List[UploadHistoryItem]
+    total_count: int
+
+class StatisticsResponse(BaseModel):
+    total_uploads: int
+    clean_pdfs: int
+    pii_pdfs: int
+    total_emails: int
+    total_ssns: int
+    avg_processing_time: float
 
 class TestResultResponse(BaseModel):
     total_tests: int
@@ -74,7 +97,10 @@ async def server_status():
         "endpoints": [
             "/api/health",
             "/api/python-server-status",
-            "/api/parse-pdf",
+            "/api/upload-pdf",
+            "/api/upload-status/{upload_id}",
+            "/api/upload-history",
+            "/api/statistics",
             "/api/run-tests"
         ],
         "capabilities": [
@@ -82,48 +108,144 @@ async def server_status():
             "PDF parsing (PyMuPDF)",
             "PDF redacting (PyMuPDF)", 
             "ClickHouse database integration",
+            "File storage management",
+            "Background processing",
             "PII detection (emails, SSNs)",
+            "Upload history tracking",
+            "Processing statistics",
             "Test suite execution"
         ]
     }
 
-@app.post("/api/parse-pdf", response_model=PDFParseResponse)
-async def parse_pdf(file: UploadFile = File(...)):
-    """Parse uploaded PDF and detect PII"""
+async def process_pdf_background(upload_id: str, file_path: str, filename: str, file_size: int):
+    """Background task to process PDF and store results"""
+    logger.info(f"Starting background processing for {filename}")
+    
+    try:
+        # Update status to processing
+        # (In a real implementation, you'd update this in ClickHouse)
+        
+        # Parse the PDF
+        start_time = time.time()
+        parse_result = pdf_parser.parse_pdf(Path(file_path))
+        processing_time = time.time() - start_time
+        
+        # Create processing result
+        processing_result = PDFProcessingResult(
+            upload_id=upload_id,
+            filename=filename,
+            file_path=file_path,
+            file_size=file_size,
+            upload_date=datetime.now(),
+            processing_date=datetime.now(),
+            status=ProcessingStatus.COMPLETE if parse_result["status"] == "SUCCESS" else ProcessingStatus.FAILED,
+            pages_processed=parse_result.get("pages_processed", 0),
+            text_length=parse_result.get("text_length", 0),
+            processing_time=processing_time,
+            emails=parse_result.get("emails", []),
+            ssns=parse_result.get("ssns", []),
+            error_message=parse_result.get("error")
+        )
+        
+        # Store in ClickHouse
+        clickhouse_service.store_upload_result(processing_result)
+        
+        logger.info(f"Background processing complete for {filename}")
+        
+    except Exception as e:
+        logger.error(f"Background processing failed for {filename}: {e}")
+        # Store error result
+        error_result = PDFProcessingResult(
+            upload_id=upload_id,
+            filename=filename,
+            file_path=file_path,
+            file_size=file_size,
+            upload_date=datetime.now(),
+            processing_date=datetime.now(),
+            status=ProcessingStatus.FAILED,
+            pages_processed=0,
+            text_length=0,
+            processing_time=0,
+            emails=[],
+            ssns=[],
+            error_message=str(e)
+        )
+        clickhouse_service.store_upload_result(error_result)
+
+@app.post("/api/upload-pdf", response_model=PDFUploadResponse)
+async def upload_pdf(file: UploadFile = File(...), background_tasks: BackgroundTasks = None):
+    """Upload PDF file and start processing"""
     logger.info(f"PDF upload requested: {file.filename}")
     
     # Validate file type
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="File must be a PDF")
     
-    # Save uploaded file temporarily
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
-        content = await file.read()
-        temp_file.write(content)
-        temp_file_path = Path(temp_file.name)
-    
     try:
-        # Parse the PDF
-        import time
-        start_time = time.time()
-        result = pdf_parser.parse_pdf(temp_file_path)
-        processing_time = time.time() - start_time
+        # Read file content
+        content = await file.read()
+        file_size = len(content)
         
-        # Add processing time to result
-        result["processing_time"] = processing_time
+        # Save file to storage
+        upload_id, file_path = file_storage.save_uploaded_file(content, file.filename)
         
-        logger.info(f"PDF parsing complete: {len(result['emails'])} emails, {len(result['ssns'])} SSNs found")
+        # Start background processing
+        if background_tasks:
+            background_tasks.add_task(
+                process_pdf_background, 
+                upload_id, 
+                file_path, 
+                file.filename, 
+                file_size
+            )
         
-        return PDFParseResponse(**result)
+        logger.info(f"PDF upload successful: {upload_id}")
+        
+        return PDFUploadResponse(
+            upload_id=upload_id,
+            status="uploaded",
+            message="PDF uploaded successfully and processing started"
+        )
         
     except Exception as e:
-        logger.error(f"PDF parsing failed: {e}")
-        raise HTTPException(status_code=500, detail=f"PDF parsing failed: {str(e)}")
+        logger.error(f"PDF upload failed: {e}")
+        raise HTTPException(status_code=500, detail=f"PDF upload failed: {str(e)}")
+
+@app.get("/api/upload-status/{upload_id}", response_model=PDFProcessingResponse)
+async def get_upload_status(upload_id: str):
+    """Get processing status for a specific upload"""
+    result = clickhouse_service.get_upload_by_id(upload_id)
     
-    finally:
-        # Clean up temporary file
-        if temp_file_path.exists():
-            os.unlink(temp_file_path)
+    if not result:
+        raise HTTPException(status_code=404, detail="Upload not found")
+    
+    return PDFProcessingResponse(
+        upload_id=result.upload_id,
+        status=result.status.value,
+        emails=result.emails,
+        ssns=result.ssns,
+        text_length=result.text_length,
+        pages_processed=result.pages_processed,
+        processing_time=result.processing_time,
+        error=result.error_message
+    )
+
+@app.get("/api/upload-history", response_model=UploadHistoryResponse)
+async def get_upload_history(limit: int = 50):
+    """Get upload history from ClickHouse"""
+    uploads = clickhouse_service.get_upload_history(limit)
+    
+    return UploadHistoryResponse(
+        uploads=uploads,
+        total_count=len(uploads)
+    )
+
+@app.get("/api/statistics", response_model=StatisticsResponse)
+async def get_statistics():
+    """Get processing statistics from ClickHouse"""
+    stats = clickhouse_service.get_statistics()
+    
+    return StatisticsResponse(**stats)
 
 @app.post("/api/run-tests", response_model=TestResultResponse)
 async def run_tests():
